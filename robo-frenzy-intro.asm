@@ -799,18 +799,42 @@ TitleGame:  .byte "                      "
             .byte ('E'-'@'),('N'-'@'),('Z'-'@'),('Y'-'@')
             .byte "      "
             .byte "                      "
-            .byte "   ",('C'-'@'),(46+$80)," ", (50+$80),(48+$80),(49+$80)
-            .byte 56+$80," ",('F'-'@'),(46+$80),('A'-'@'),(46+$80),('O'-'@'),(46+$80)
+            .byte "   ",('C'-'@'),(46+$80)," ", (50+$80),(48+$80),(50+$80)
+            .byte 50+$80," ",('F'-'@'),(46+$80),('A'-'@'),(46+$80),('O'-'@'),(46+$80)
             .byte "   ",0
 
-ScoreDesc:  .byte "                      "
-            .byte "                      "
-            .byte "    ", ALIEN2," ",(49+$80),(48+$80)
-            .byte " ", ('P'-'@'),('T'-'@'),"       "
-            .byte "                      "
-            .byte "                      ",0
+;ScoreDesc:  .byte "                      "
+;            .byte "                      "
+;            .byte "    ", ALIEN2," ",(49+$80),(48+$80)
+;            .byte " ", ('P'-'@'),('T'-'@'),"       "
+;            .byte "                      "
+;            .byte "                      ",0
 
-Keys:       .byte  "            ",27+128,('Z'-'@'),29+128, "   ",  ('L'-'@')
+ScoreDesc:   .byte "                      "
+             .byte "    ",HEAD, " ",(49+$80),(48+$80)
+             .byte " ", ('P'-'@'),('T'-'@'),"       "
+             .byte " ",LARM,RARM, " ",(49+$80),(48+$80)
+             .byte " ", ('P'-'@'),('T'-'@'),"       "
+             .byte "                      "
+             .byte "                      "
+             .byte "     ", MOTHER1,HEAD,MOTHER3,"  ",(53+$80),(48+$80)
+             .byte " ",('P'-'@'),('T'-'@'), "        "
+             .byte "                      ",0
+
+
+;ScoreDesc:  .byte "                      "
+;            .byte "                      "
+;            .byte "                      "
+;            .byte "    ", LARM," ",(49+$80),(48+$80)
+;            .byte " ", ('P'='@'),('T'-'@')
+;            .byte "    ", HEAD," ",(50+$80),(48+$80)
+;            .byte " ", ('P'-'@'),('T'-'@')
+;            .byte "    ", RARM, " ",(49+$80),(48+$80)
+;            .byte " ", ('P'='@'),('T'-'@')
+;            .byte "   ",0
+
+Keys:       .byte "                      "
+            .byte  "            ",27+128,('Z'-'@'),29+128, "   ",  ('L'-'@')
             .byte ('E'-'@')
             .byte ('F'-'@'), ('T'-'@'),"        "
             .byte "    ", 27+128,('X'-'@'),29+128, "   ",  ('R'-'@'), ('I'-'@')
@@ -852,19 +876,17 @@ LoadCmdLen=5
 LoadCmd:    .byte 131,13,13
 
 DefChars:
-
-
-            ALIEN1 = 0
-            .byte %00111100     ; Alien #1, associated to ch. 0 (normally @)
-            .byte %01111110
-            .byte %11011011
-            .byte %11111111
+            LARM = 0
+            .byte %01111110     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %01100110
+            .byte %01100110
+            .byte %01100110
+            .byte %01100110
             .byte %01100110
             .byte %00111100
-            .byte %01000010
-            .byte %10000001
+            .byte %00011000
 
-            ALIEN2 = 1
+            HEAD = 1
             .byte %00111100     ; Alien #2, associated to ch. 1 (normally A)
             .byte %01111110
             .byte %11011011
@@ -874,15 +896,25 @@ DefChars:
             .byte %01100110
             .byte %00000000
 
-            ALIEN3 = 2
-            .byte %10000001     ; Alien #3, associated to ch. 2 (normally B)
-            .byte %01111110
-            .byte %11011011
-            .byte %11111111
+            RARM = 2
+            .byte %01111110     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %01100110
+            .byte %01100110
+            .byte %01100110
+            .byte %01100110
             .byte %01100110
             .byte %00111100
-            .byte %11000011
-            .byte %00100100
+            .byte %00011000
+
+            ;ALIEN3 = 2
+            ;.byte %10000001     ; Alien #3, associated to ch. 2 (normally B)
+            ;.byte %01111110
+            ;.byte %11011011
+            ;.byte %11111111
+            ;.byte %01100110
+            ;.byte %00111100
+            ;.byte %11000011
+            ;.byte %00100100
 
             ALIEN4 = 3
             .byte %10000001     ; Alien #4, associated to ch. 3 (normally C)
