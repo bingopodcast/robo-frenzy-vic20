@@ -7,18 +7,9 @@
 ; that runs on an unexpanded VIC-20.  See the following URL for more info:
 ; https://pinside.com/pinball/forum/topic/new-em-arcade-game
 ;
-;
-; Original notes follow:
-;
-; A certain amount of work has been done to ensure that the graphics is smooth
-; enough so that the effect hopefully appears to be quite polished.
-; It is my first attempt to write a complete game in 6502 assembly language,
-; even if I learnt that language many years ago and I used it mainly as a
-; complement for BASIC programs.
-;
 ; The assembler used is ca65
 ;
-; The bombs drop by aliens are described by four arrays:
+; The tentacles are described by four arrays:
 ; BombSpeed, BombPosX, BombPosY and BombPosOY. Their name should be quite
 ; self-descriptive, except for BombPosOY, that contains the old position of the
 ; bombs (Y coordinate, as bombs fall vertically) and is used for erasing the
@@ -46,12 +37,13 @@
 
 ; Difficulty-related constants
         TENTPROB = $F0      ; Higher = less tentacle movement
-        #SHIPPROB = $F5      ; Higher = less mother ships
+        ;SHIPPROB = $F5      ; Higher = less mother ships
         PERIODS = 5         ; Initial difficulty (less=faster)
 
 ; General constants
         NMTENTS = 8         ; Maximum number of tentacles moving at the same time
         NMSHOTS = 0         ; Maximum number of cannon shots at the same time
+        NMBOMBS = 0
         MAXMOTHERS = 0     ; Maximum number of mother ships in a level
 
 ; General-use addresses
@@ -109,7 +101,7 @@
         ColourRead= $15     ; Colour read by GetChar
         POSCHARPT = $1A     ; Pointer for a character in memory (word)
         POSCOLPT  = $1C     ; Pointer for a colour in memory (word)
-        Bombcntr  = $1E     ; Counter for bomb interrupts
+        ;Bombcntr  = $1E     ; Counter for bomb interrupts
         PixPosXO  = $1F     ; Old Position in characters
         TmpScan   = $20     ; Used in raster line sync code
         Random    = $21     ; Position where to store a random word by GetRand
@@ -146,8 +138,8 @@
         TentaclePeriod= $46     ; Period for updating tentacle positions
         Level     = $47     ; Current level
         tmpp      = $48     ; Temp for gear position
-        ExplMXpos = $49     ; Hor. position (ch) of the explosion on mother sh.
-        ExplMCnt  = $4A     ; Mother ship explosion counter
+        RobotProg = $49     ; Temp for current robot progress
+        RobotCnt  = $4A     ; Completed counter
         PlayerYPos= $4B
         TentacleYLimit=$4C
         BunkerY   = $4D
@@ -171,8 +163,8 @@
         tprnd1    = $61
         tprnd2    = $62
 
-        mothercntr= $63
-        aliencntr = $64
+        robotcntr= $63
+        tentaclecntr = $64
 
         INITVALC=$ede4
 
@@ -242,9 +234,9 @@ mainloop:   lda Joystick
             lda Win         ; If the game has stopped, restart
             bne restart
 @norestart: lda keyin
-            cmp #$58        ; X: increase position of the cannon (right)
+            cmp #$58        ; X: increase position of the player (right)
             beq right
-            cmp #$5A        ; Z: decrease position of the cannon (left)
+            cmp #$5A        ; Z: decrease position of the player (left)
             beq left
             cmp #$20        ; Space: fire!
             beq fire
@@ -272,20 +264,24 @@ left:       dec PlayerPos
 
 fire:       lda Win         ; If the game has stopped, restart
             bne restart
-            ldx #0          ; Search for the first free shot
-@search:    lda FireSpeed,X ; (i.e. whose speed = 0)
-            beq @found
-            inx
-            cpx #NMSHOTS
-            bne @search
-            jmp mainloop    ; No enough shots allowed in parallel. Abort fire.
-@found:     lda PlayerPos
-            sta FirePosX,X  ; Put the actual cannon position in the X coord.
-            lda PlayerYPos  ; Shoot from the last line
-            sta FirePosY,X
-            lda #1
-            sta FireSpeed,X
-            jmp mainloop
+
+; Disabling the firing of a cannon, since there is no fire in this game.
+; Fire button/space only restarts the game on Game Over.
+
+;            ldx #0          ; Search for the first free shot
+;@search:    lda FireSpeed,X ; (i.e. whose speed = 0)
+;            beq @found
+;            inx
+;            cpx #NMSHOTS
+;            bne @search
+;            jmp mainloop    ; No enough shots allowed in parallel. Abort fire.
+;@found:     lda PlayerPos
+;            sta FirePosX,X  ; Put the actual cannon position in the X coord.
+;            lda PlayerYPos  ; Shoot from the last line
+;            sta FirePosY,X
+;            lda #1
+;            sta FireSpeed,X
+;            jmp mainloop
 
 
 
@@ -367,26 +363,26 @@ SyncNTSC:
 
 CenterScreenPAL:
             lda #30
-            sta CannonYPos
+            sta PlayerYPos
             lda #$3E        ; Set a 31 row-high column
             sta VICROWNC
             lda #29
             sta BunkerY
             lda #25*8
-            sta AlienYLimit
+            sta TentacleYLimit
             ldx #$12
             ldy #$16
             jmp ContInit
 
 CenterScreenNTSC:
             lda #26
-            sta CannonYPos
+            sta PlayerYPos
             lda #$36        ; Set a 27 row-high column
             sta VICROWNC
             lda #25
             sta BunkerY
             lda #22*8
-            sta AlienYLimit
+            sta TentacleYLimit
             ldx #$0A
             ldy #$10
             jmp ContInit
@@ -397,8 +393,8 @@ StartGame:
             sta VOLUME
             lda #17
             sta TentaclePosY   ; Initial position of tentacle
-            lda #$FD        ; No mother ship visible
-            sta MotherPos
+            ;lda #$FD        ; No mother ship visible
+            ;sta MotherPos
             lda #$FF
             sta TentaclePosYO
             sta TentacleR1s
@@ -409,38 +405,38 @@ StartGame:
             sta PlayerPos   ; Initial position of the player
             lda #$00
             sta Direction
-            sta mothercntr
+            sta robotcntr
             sta Win
             sta IrqCn
             sta NOISE
             sta TentaclePosX
             jsr ConfLevel
-            ldx #NMBOMBS    ; Clear all bombs
+            ;ldx #NMBOMBS    ; Clear all bombs
 @loopg:     LDA #$0
-            sta BombSpeed-1,X
+            sta TentacleSpeed-1,X
             lda #$FF
-            sta BombPosOY-1,X
+            sta TentaclePosYO-1,X
             lda #EMPTY
             dex
             bne @loopg
-            ldx #NMSHOTS    ; Clear all shoots
+            ;ldx #NMSHOTS    ; Clear all shoots
 @loopp:     lda #$00
-            sta FireSpeed-1,x
-            sta FirePosX-1,x
-            sta FirePosY-1,x
-            sta FirePosOY-1,x
-            sta FireColOver-1,X
-            lda #EMPTY
-            sta FireChOver-1,X
+            ;sta FireSpeed-1,x
+            ;sta FirePosX-1,x
+            ;sta FirePosY-1,x
+            ;sta FirePosOY-1,x
+            ;sta FireColOver-1,X
+            ;lda #EMPTY
+            ;sta FireChOver-1,X
             dex
             bne @loopp
             lda #EMPTY      ; Clear the screen
             jsr CLS
             lda #BLACK
             jsr PaintColour
-            jsr DrawShield
+            ;jsr DrawShield
             lda #24
-            sta aliencntr
+            sta tentaclecntr
             lda #32
             bit VoiceBase
             bpl @musicok
@@ -475,51 +471,51 @@ ConfLevel:  ldx Level
 ; 0---4---8---2---
 ;  **  **  **  **
 
-DrawShield: ldx #1
-            ldy BunkerY
-            lda Period
-            sta Colour
-            lda #BLOCK
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #5
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #9
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #13
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #1
-            dey
-            lda #BLOCKL
-            jsr DrawChar
-            inx
-            lda #BLOCKR
-            jsr DrawChar
-            ldx #5
-            lda #BLOCKL
-            jsr DrawChar
-            inx
-            lda #BLOCKR
-            jsr DrawChar
-            ldx #9
-            lda #BLOCKL
-            jsr DrawChar
-            inx
-            lda #BLOCKR
-            jsr DrawChar
-            ldx #13
-            lda #BLOCKL
-            jsr DrawChar
-            inx
-            lda #BLOCKR
-            jmp DrawChar
+;DrawShield: ldx #1
+;            ldy BunkerY
+;            lda Period
+;            sta Colour
+;            lda #BLOCK
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #5
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #9
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #13
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #1
+;            dey
+;            lda #BLOCKL
+;            jsr DrawChar
+;            inx
+;            lda #BLOCKR
+;            jsr DrawChar
+;            ldx #5
+;            lda #BLOCKL
+;            jsr DrawChar
+;            inx
+;            lda #BLOCKR
+;            jsr DrawChar
+;            ldx #9
+;            lda #BLOCKL
+;            jsr DrawChar
+;            inx
+;            lda #BLOCKR
+;            jsr DrawChar
+;            ldx #13
+;            lda #BLOCKL
+;            jsr DrawChar
+;            inx
+;            lda #BLOCKR
+;            jmp DrawChar
 
 draw1l:
             lda Score       ; Load the current score and convert it to BCD
@@ -583,9 +579,9 @@ MovCh:      ldx #(LASTCH+1)*8+1
 ; This is the interrupt handler, called 50 times each second when the VIC-20
 ; is a PAL unit or 60 when NTSC. It does the following things:
 ;
-; 1 - Calculate positions of the aliens and, if necessary, redraw them
-; 2 - Calculate positions of the falling bombs and fire shoots and draw them
-; 3 - Update the position of the cannon and draw it
+; 1 - Calculate positions of the tentacles and, if necessary, redraw them
+; 2 - Calculate positions of the robots and gear and draw them
+; 3 - Update the position of the player and draw it
 ; 5 - Check for collisions and handle explosions
 ; 6 - Call the sound drivers
 ; 7 - Jump to the original IRQ handler (for scanning the keyboard, etc).
@@ -594,7 +590,7 @@ MovCh:      ldx #(LASTCH+1)*8+1
 ; loop and the communication with the IRQ handler is made by a set of
 ; appropriate flags. This approach has the following advantages:
 ;
-; - The speed of the aliens and of the cannon is controlled very precisely as
+; - The speed of the tentacles and the player is controlled very precisely as
 ;   the IRQ handler is called at a predictable and stable rate.
 ; - The code for the visualization and for the user interface (i.e. recognizing
 ;   keyboard and joystick movements) is kept separate.
@@ -617,11 +613,11 @@ IrqHandler: pha
             cmp #$FD        ; sound effects
             bne @nomute     ; If the mother ship is present, do not mute SFX
             stx EFFECTS
-@nomute:    lda ExplMCnt
-            beq @noerMexp
-            dec ExplMCnt
-            bne @noerMexp
-            ldx ExplMXpos
+@nomute:    ;lda ExplMCnt
+            ;beq @noerMexp
+            ;dec ExplMCnt
+            ;bne @noerMexp
+            ;ldx ExplMXpos
             ldy #1
             lda #EMPTY
             jsr DrawChar
@@ -648,7 +644,7 @@ IrqHandler: pha
             and #7
             sta SpriteY     ; Calculate Y shift in pixel
             jsr EraseTentacles
-            jsr MoveTentacles   ; Make tentacles move.
+            ;jsr MoveTentacles   ; Make tentacles move.
             bit Win         ; If Win <0 stop the game
             bmi @exitirq
             bit Direction   ; Increment or decrement the X position,
@@ -657,11 +653,11 @@ IrqHandler: pha
             jmp @cont
 @negative:  dec TentaclePosX   ; The position should be decreased
 @cont:      ldx TentaclePosY   ; Check if the tentacles touch player
-            lda TentaclesR3s
+            lda TentacleR3s
             bne @comp
             inx
             inx
-            lda TentaclesR2s
+            lda TentacleR2s
             bne @comp
             inx
             inx
@@ -674,7 +670,7 @@ IrqHandler: pha
             ldx #TENTACLE1
             ldy #TENTACLE3
             bcc @normal
-@altaliens: ldx #TENTACLE2
+@alttentacle: ldx #TENTACLE2
             ldy #TENTACLE4
 @normal:    stx TentacleCode1
             sty TentacleCode2
@@ -698,7 +694,7 @@ IrqHandler: pha
             beq @nochange
             jsr ClearPlayer ; If yes, redraw it
 @nochange:  jsr DrawPlayer
-            jsr MoveShoots  ; Update the position of cannon shots
+            ;jsr MoveShoots  ; Update the position of cannon shots
             inc IrqCn
 @exitirq:   bit Win
             bmi @nomusic1
@@ -716,54 +712,54 @@ IrqHandler: pha
 
 ; Decide wether the mother ship enters the screen and handle its movement.
 
-MotherSh:   lda MotherPos
-            cmp #$FD
-            bne @moveship
-            lda Random+1        ; Get a random number and check if it is less
-            cmp #SHIPPROB       ; than a given threshold
-            bcc @exitsh
-            lda mothercntr
-            cmp #MAXMOTHERS
-            beq @exitsh
-            lda #$0F
-            sta MotherPos
-            inc mothercntr
-            lda #0
-            sta MotherCntr
-            rts
+;MotherSh:   lda MotherPos
+;            cmp #$FD
+;            bne @moveship
+;            lda Random+1        ; Get a random number and check if it is less
+;            cmp #SHIPPROB       ; than a given threshold
+;            bcc @exitsh
+;            lda mothercntr
+;            cmp #MAXMOTHERS
+;            beq @exitsh
+;            lda #$0F
+;            sta MotherPos
+;            inc mothercntr
+;            lda #0
+;            sta MotherCntr
+;            rts
 
-@moveship:  ldx MotherCntr
-            cpx #3
-            beq @move
-            inc MotherCntr
-            rts
+;@moveship:  ldx MotherCntr
+;            cpx #3
+;            beq @move
+;            inc MotherCntr
+;            rts
 
-@move:      ldx #0
-            stx MotherCntr
-            tax
-            ldy #$1
-            lda #$A0
-            clc
-            adc MotherPos
-            sta EFFECTS
-            lda #YELLOW
-            sta Colour
-            lda #EMPTY      ; Erase the ship in the previous position
-            inx
-            inx
-            jsr DrawChar    ; Erase
-            dec MotherPos
-            beq @exitsh
-            ldx MotherPos   ; Draw the ship
-            lda #MOTHER1
-            jsr DrawChar
-            inx
-            lda #MOTHER2
-            jsr DrawChar
-            inx
-            lda #MOTHER3
-            jsr DrawChar
-@exitsh:    rts
+;@move:      ldx #0
+;            stx MotherCntr
+;            tax
+;            ldy #$1
+;            lda #$A0
+;            clc
+;            adc MotherPos
+;            sta EFFECTS
+;            lda #YELLOW
+;            sta Colour
+;            lda #EMPTY      ; Erase the ship in the previous position
+;            inx
+;            inx
+;            jsr DrawChar    ; Erase
+;            dec MotherPos
+;            beq @exitsh
+;            ldx MotherPos   ; Draw the ship
+;            lda #MOTHER1
+;            jsr DrawChar
+;            inx
+;            lda #MOTHER2
+;            jsr DrawChar
+;            inx
+;            lda #MOTHER3
+;            jsr DrawChar
+;@exitsh:    rts
 
 ; Draw the player on the screen, at the current position, contained in
 ; PlayerPos (in characters).
@@ -837,7 +833,7 @@ EraseTentacles:
 ; Calculate SpriteX and PixPos from TentaclePosX. It is a little tricky, as
 ; TentaclePosX can be negative and some corrections have to be done.
 
-CalcXpos:   lda AlienPosX       ; Calculate the position in characters
+CalcXpos:   lda TentaclePosX       ; Calculate the position in characters
             bpl @positive
             eor #$FF            ; Calculate the two complement
             clc
@@ -850,7 +846,7 @@ CalcXpos:   lda AlienPosX       ; Calculate the position in characters
             lsr
             lsr
             sta PixPosX         ; Store it in PixPosX
-            lda AlienPosX       ; Calculate the position in characters
+            lda TentaclePosX       ; Calculate the position in characters
             bpl @positive1
             lda #$FF
             sec
@@ -865,17 +861,17 @@ CalcXpos:   lda AlienPosX       ; Calculate the position in characters
             sta SpriteX
             rts
 
-; Draw aliens on the screen. They are several lines with at most 8 aliens
-; each. The presence of an alien in the first row is given by bits in the
-; AliensR1 byte. An alien is present at the beginning of the game (or level)
-; and can be destroyed when hit. In this case, the corresponding bit in the
-; AliensR1 byte is set to 0. Same for AliensR2 and AliensR3.
-; The vertical position of the aliens should be in AliensPosY (in pixels) and
-; AlienCurrY (in chars) should have been already calculated.
+; Draw tentacles on the screen. They are several lines with 4 segments
+; each. The presence of an tentacle in the first row is given by bits in the
+; TentacleR1 byte. A tentacle is present at the beginning of the game (or level). 
+; In this case, the corresponding bit in the
+; TentacleR1 byte is set to 0. Same for TentacleR2 and TentacleR3.
+; The vertical position of the tentacles should be in TentaclePosY (in pixels) and
+; TentacleCurrY (in chars) should have been already calculated.
 
-DrawAliens:
-            lda AlienPosYc
-            sta AlienCurrY
+DrawTentacles:
+            lda TentaclePosYc
+            sta TentacleCurrY
             jsr CalcXpos
 
             ; Create the first sprite
@@ -885,7 +881,7 @@ DrawAliens:
             lda #>(GRCHARS1+SPRITE1A*8)
             sta SPRITECH+1
             jsr ClearSprite
-            lda AlienCode1
+            lda TentacleCode1
             sta CharCode
             jsr LoadSprite
 
@@ -894,43 +890,43 @@ DrawAliens:
             lda #>(GRCHARS1+SPRITE2A*8)
             sta SPRITECH+1
             jsr ClearSprite
-            lda AlienCode2
+            lda TentacleCode2
             sta CharCode
             jsr LoadSprite
 
-            lda #$ff            ; Reset the min/max positions of aliens in ch.
-            sta AlienMinX
+            lda #$ff            ; Reset the min/max positions of tentacles in ch.
+            sta TentacleMinX
             lda #$00
-            sta AlienMaxX
+            sta TentacleMaxX
 
-            lda AliensR1s       ; Top line of aliens
-            sta AliensR
+            lda TentacleR1s       ; Top line of aliens
+            sta TentacleR
             lda #SPRITE1A      ; AlienCode1
             sta CharCode
             lda #RED
             sta Colour
-            jsr AlienLoop
+            jsr TentacleLoop
 
-            inc AlienCurrY      ; Second line of aliens
-            inc AlienCurrY
-            lda #SPRITE2A      ; AlienCode1
+            inc TentacleCurrY      ; Second line of tentacles
+            inc TentacleCurrY
+            lda #SPRITE2A      ; TentacleCode1
             sta CharCode
             lda #CYAN
             sta Colour
-            lda AliensR2s
-            sta AliensR
-            jsr AlienLoop
+            lda TentacleR2s
+            sta TentacleR
+            jsr TentacleLoop
 
-            inc AlienCurrY      ; Third line of aliens
-            inc AlienCurrY
+            inc TentacleCurrY      ; Third line of tentacles
+            inc TentacleCurrY
 
             lda #GREEN
             sta Colour
-            lda #SPRITE1A      ; AlienCode1
+            lda #SPRITE1A      ; TentacleCode1
             sta CharCode
-            lda AliensR3s
-            sta AliensR
-            jmp AlienLoop
+            lda TentacleR3s
+            sta TentacleR
+            jmp TentacleLoop
 
 ; Wait for the wanted rasterline (NTSC only)
 
@@ -942,12 +938,12 @@ Waitrast1:  lda VICRAST     ; Wait if there is a risk of flicker
             sta TmpScan
             clc
             adc #5
-            cmp AlienPosYc
+            cmp TentaclePosYc
             bmi @noflicker
             lda TmpScan
             sec
             sbc #10
-            cmp AlienPosYc
+            cmp TentaclePosYc
             bpl @noflicker
             jmp Waitrast1
 @noflicker:
@@ -957,24 +953,24 @@ Waitrast1:  lda VICRAST     ; Wait if there is a risk of flicker
 
 ; Draw a line of aliens (the sprite should have been already created)
 
-AlienLoop:  ldy AlienCurrY
+TentacleLoop:  ldy TentacleCurrY
             ldx #0
             jsr PosChar
             ldx #8*2
-@loop:      dex             ; X contains the alien index in the line
-            asl AliensR     ; Check if the alien is still alive
+@loop:      dex             ; X contains the tentacle index in the line
+            asl TentacleR     ; Check if the tentacle is still alive
             bcc @ret
             txa
             clc
             adc PixPosX     ; To be added to the pos. in characters
-            tay             ; to obtain the actual position where to draw al.
+            tay             ; to obtain the actual position where to draw tent.
             dey
-            cpy AlienMinX   ; Update the minimum and maximum value of positions
+            cpy TentacleMinX   ; Update the minimum and maximum value of positions
             bcs @nomin
-            sty AlienMinX
-@nomin:     cpy AlienMaxX
+            sty TentacleMinX
+@nomin:     cpy TentacleMaxX
             bcc @nomax
-            sty AlienMaxX
+            sty TentacleMaxX
 @nomax:     lda CharCode
             sta (POSCHARPT),Y       ; Sprite char A
             lda Colour
@@ -1014,81 +1010,81 @@ AddScore:   clc
 
 ; Control the movement of the bullet/laser shot fired by the cannon.
 
-MoveShoots: ldx #NMSHOTS              ; Update the position of the shot
-@loop:      lda FireSpeed-1,X     ; Check if the shot is active (speed!=0)
-            beq @cont
-            dec FirePosY-1,X
-            lda FirePosY-1,X
-            cmp #1              ; Check if we reached the top of the screen
-            bcs @stillf
-            lda #$0             ; Here we reached the top of the screen
-            sta EFFECTS
-            lda #$FF            ; In this case, destroy the bomb
-            sta FireSpeed-1,X
-            sta FirePosY-1,X
-            bmi @cont
-@stillf:    ora #$80
-            sta EFFECTS         ; Sound effect: peeewwww!!!
-@cont:      dex
-            bne @loop
+;MoveShoots: ldx #NMSHOTS              ; Update the position of the shot
+;@loop:      lda FireSpeed-1,X     ; Check if the shot is active (speed!=0)
+;            beq @cont
+;            dec FirePosY-1,X
+;            lda FirePosY-1,X
+;            cmp #1              ; Check if we reached the top of the screen
+;            bcs @stillf
+;            lda #$0             ; Here we reached the top of the screen
+;            sta EFFECTS
+;            lda #$FF            ; In this case, destroy the bomb
+;            sta FireSpeed-1,X
+;            sta FirePosY-1,X
+;            bmi @cont
+;@stillf:    ora #$80
+;            sta EFFECTS         ; Sound effect: peeewwww!!!
+;@cont:      dex
+;            bne @loop
                                 ; X contains 0 here
-DrawShots:                      ; Draw shots
-loop4:      stx tmpindex
-            lda FirePosX,X
-            sta tmpx            ; Store the X position of the shot
-            lda FirePosOY,X
-            cmp FirePosY,X      ; Check if the shot should be redrawn
-            beq notmove
-            tay
-            lda FireColOver,X
-            sta Colour
-            lda FireChOver,X    ; Erase the previous shot
-            cmp #$FF            ; In some situations, all the aliens have to
-            bne @normalc        ; be redrawn to avoid a glitch...
-            jsr DrawAliens      ; this is not very elegant!
-            jmp @noerase
-@normalc:   ldx tmpx            ; Load the X position
-            jsr DrawChar        ; Erase the shot in the old position
-@noerase:   ldx tmpindex
-            lda FireSpeed,X     ; Do not draw inactive shots
-            beq notmove
-            cmp #$FF
-            bne @normal
-            lda #0
-            sta FireSpeed,X
-            sta EFFECTS
-@normal:    lda FirePosY,X
-            sta tmpy
-            sta FirePosOY,X     ; Save the current position
-            tay
-            ldx tmpx
-            jsr GetChar         ; Check for a collision
-            ldx tmpindex
-            sta FireChOver,X
-            pha
-            lda ColourRead
-            sta FireColOver,X
-            pla
-            ldx tmpx
-            cmp #EMPTY
-            bne collision
-            lda #YELLOW         ; Colour of the shots
-            sta Colour
-            lda #SHOT
-            jsr DrawChar        ; Draw the shot in the new position
-notmove:    ldx tmpindex
-            inx
-            cpx #NMSHOTS
-            bne loop4
-            rts
+;DrawShots:                      ; Draw shots
+;loop4:      stx tmpindex
+;            lda FirePosX,X
+;            sta tmpx            ; Store the X position of the shot
+;            lda FirePosOY,X
+;            cmp FirePosY,X      ; Check if the shot should be redrawn
+;            beq notmove
+;            tay
+;            lda FireColOver,X
+;            sta Colour
+;            lda FireChOver,X    ; Erase the previous shot
+;            cmp #$FF            ; In some situations, all the aliens have to
+;            bne @normalc        ; be redrawn to avoid a glitch...
+;            jsr DrawTentacles      ; this is not very elegant!
+;            jmp @noerase
+;@normalc:   ldx tmpx            ; Load the X position
+;            jsr DrawChar        ; Erase the shot in the old position
+;@noerase:   ldx tmpindex
+;            lda FireSpeed,X     ; Do not draw inactive shots
+;            beq notmove
+;            cmp #$FF
+;            bne @normal
+;            lda #0
+;            sta FireSpeed,X
+;            sta EFFECTS
+;@normal:    lda FirePosY,X
+;            sta tmpy
+;            sta FirePosOY,X     ; Save the current position
+;            tay
+;            ldx tmpx
+;            jsr GetChar         ; Check for a collision
+;            ldx tmpindex
+;            sta FireChOver,X
+;            pha
+;            lda ColourRead
+;            sta FireColOver,X
+;            pla
+;            ldx tmpx
+;            cmp #EMPTY
+;            bne collision
+;            lda #YELLOW         ; Colour of the shots
+;            sta Colour
+;            lda #SHOT
+;            jsr DrawChar        ; Draw the shot in the new position
+;notmove:    ldx tmpindex
+;            inx
+;            cpx #NMSHOTS
+;            bne loop4
+;            rts
 
 ; Here we know that a collision took place, so we should see what element has
 ; been encountered by the bullet. A contains the character that has been found
 
 
-; Here, the collision with an alien is sure
+; Here, the collision with an tentacle is sure
 
-realshot:   lda #$D0            ; We are going to make some noise!
+tentacleshot:   lda #$D0            ; We are going to make some noise!
             sta NOISE
             txa                 ; X contains the current hor. position
             sec
@@ -1101,8 +1097,8 @@ realshot:   lda #$D0            ; We are going to make some noise!
 @contsh:    asl
             dex
             bne @contsh
-@r1:        pha                 ; A contains the code to XOR to the aliens line
-            lda AlienPosYc
+@r1:        pha                 ; A contains the code to XOR to the tentacle line
+            lda TentaclePosYc
             sta tmp4
             pla
             ldy tmpy            ; Get the current vert. position
@@ -1111,8 +1107,8 @@ realshot:   lda #$D0            ; We are going to make some noise!
             dey
             cpy tmp4
             bne @l2
-@p1:        eor AliensR1s       ; kill aliens with XOR!    ;-)
-            sta AliensR1s
+@p1:        eor TentacleR1s       ; kill tentacles with XOR!    ;-)
+            sta TentacleR1s
             jmp @follow
 @l2:        inc tmp4
             cpy tmp4
@@ -1120,14 +1116,14 @@ realshot:   lda #$D0            ; We are going to make some noise!
             inc tmp4
             cpy tmp4
             bne @l3
-@p2:        eor AliensR2s
-            sta AliensR2s
+@p2:        eor TentacleR2s
+            sta TentacleR2s
             jmp @follow
 
-@l3:        eor AliensR3s       ; Add here for more than three lines of aliens
-            sta AliensR3s
-@follow:    dec aliencntr
-            lda aliencntr
+@l3:        eor TentacleR3s       ; Add here for more than three lines of aliens
+            sta TentacleR3s
+@follow:    dec tentaclecntr
+            lda tentaclecntr
             cmp #4
             bne @norm
             jsr speedup
@@ -1137,27 +1133,27 @@ realshot:   lda #$D0            ; We are going to make some noise!
             jsr DrawChar
             lda #$FF
             ldx tmpindex
-            sta FireSpeed,X
+            sta TentacleSpeed,X
             sta FirePosY,X      ; This would cause a redraw erasing the shot
             lda #1
             jsr AddScore
             jmp backcoll
 
 collision:  cmp #SPRITE1A
-            bmi @noalien
+            bmi @notentacle
             cmp #SPRITE2D
-            bpl @noalien
+            bpl @notentacle
 
 
-; Handle a possible collision with an alien.
+; Handle a possible collision with a tentacle.
 
-@checkalienshot:
+@checktentacleshot:
             sta CharCode
             jsr CalcChGenOfs
             ldy #7
 @loop:      lda #SHOTMSK        ; Check collision between active pixels in the
             and (CHRPTR),Y      ; sprite and the SHOTMSK
-            bne realshot
+            bne tentacleshot
             dey
             cpy #$FF
             bne @loop
@@ -1165,24 +1161,24 @@ collision:  cmp #SPRITE1A
 ; No collision: blend the sprite with the shot and print it on screen
 
             ldy #7
-@loop1:     lda GRCHARS1+SHOT*8,Y
-            ora (CHRPTR),Y
-            sta GRCHARS1+BLENDCH*8,Y
-            dey
-            cmp #$ff
-            bne @loop1
-            ldy tmpy
-            lda ColourRead
-            sta Colour
-            lda #BLENDCH
-            jsr DrawChar
-            ldy tmpindex
-            lda #$FF            ; Redraw all the aliens in this situation.
-            sta FireChOver,y    ; If this is not done, there is a possible
-            jmp backcoll        ; glitch that appears when the old char is not
+;@loop1:     lda GRCHARS1+SHOT*8,Y
+;            ora (CHRPTR),Y
+;            sta GRCHARS1+BLENDCH*8,Y
+;            dey
+;            cmp #$ff
+;            bne @loop1
+;            ldy tmpy
+;            lda ColourRead
+;            sta Colour
+;            lda #BLENDCH
+;            jsr DrawChar
+;            ldy tmpindex
+;            lda #$FF            ; Redraw all the aliens in this situation.
+;            sta FireChOver,y    ; If this is not done, there is a possible
+;            jmp backcoll        ; glitch that appears when the old char is not
                                 ; correct in the new sprite position.
 
-@noalien:   pha
+@notentacle:   pha
             ldy tmpindex
             lda #EMPTY
             sta FireChOver,y
@@ -1196,14 +1192,14 @@ collision:  cmp #SPRITE1A
             cmp #BLOCKL
             beq bunkershot
             cmp #MOTHER1
-            beq mothershot
+            ;beq robotshot
             cmp #MOTHER2
-            beq mothershot
+            ;beq robotshot
             cmp #MOTHER3
-            beq mothershot
-            jmp notmove
+            ;beq robotshot
+            ;jmp notmove
 backcoll:   jsr CheckWin
-            jmp notmove
+            ;jmp notmove
 
 speedup:
             lda #0
@@ -1220,29 +1216,29 @@ speedup:
 
 ; Collision with the mother ship
 
-mothershot: ldx MotherPos   ; Draw the ship
-            ldy #$1
-            lda #EMPTY
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            jsr Explosion
-            ldx tmpx
-            jsr DrawChar
-            lda #$FD
-            sta MotherPos
-            lda #$FF
-            stx ExplMXpos
-            ldx tmpindex
-            sta FireSpeed,X
-            sta FirePosY,X      ; This would cause a redraw erasing the shot
-            lda #$05            ; Update the score: +50 pts
-            sta ExplMCnt
-            jsr AddScore
-            ldx tmpindex
-            jmp backcoll
+;robotshot: ldx RobotPos   ; Draw the ship
+;            ldy #$1
+;            lda #EMPTY
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            jsr Explosion
+;            ldx tmpx
+;            jsr DrawChar
+;            lda #$FD
+;            sta MotherPos
+;            lda #$FF
+;            stx ExplMXpos
+;            ldx tmpindex
+;            sta FireSpeed,X
+;            sta FirePosY,X      ; This would cause a redraw erasing the shot
+;            lda #$05            ; Update the score: +50 pts
+;            sta ExplMCnt
+;            jsr AddScore
+;            ldx tmpindex
+;            jmp backcoll
 
 bunkershot: lda #RED+MULTICOLOUR
             sta Colour
@@ -1250,7 +1246,7 @@ bunkershot: lda #RED+MULTICOLOUR
             jsr DrawChar
             lda #$FF
             ldx tmpindex
-            sta FireSpeed,X
+            sta TentacleSpeed,X
             sta FirePosY,X      ; This would cause a redraw erasing the shot
             lda #EMPTY
             sta FireChOver,X
@@ -1270,13 +1266,13 @@ Explosion:  ldx tmpindex
 
 ; Check if the player won the game.
 
-CheckWin:   lda AliensR3s       ; Check if all aliens have been destroyed
+CheckWin:   lda TentacleR3s       ; Check if all tentacles have been destroyed
             bne @exit
-            lda AliensR2s
+            lda TentacleR2s
             bne @exit
-            lda AliensR1s
+            lda TentacleR1s
             bne @exit
-            lda #$FF            ; If we come here, all aliens have been shot
+            lda #$FF            ; If we come here, all tentacles have been shot
             sta Win             ; That will stop the game
             lda #$00            ; Mute all effects
             sta NOISE
@@ -1350,142 +1346,142 @@ GameOver:   lda #$00            ; Mute all effects
 ; 3 - Draw the bombs in the new positions on the screen.
 ;
 
-FallBombs:  inc Bombcntr
-            lda Bombcntr
-            cmp TentaclePeriod
-            bcc DrawBombs
-            lda #0
-            sta Bombcntr
-            lda AliensR1s
-            sta AliensR1
-            lda AliensR2s
-            sta AliensR2
-            jsr GetRand         ; To avoid having to draw a pseudorandom number
-            lda Random          ; each time, this is done once and the results
-            sta tprnd1          ; are shifted inside two temporary registers
-            lda Random+1        ; This yields a result random enough for the
-            sta tprnd1+1        ; purposes of dropping bombs.
-            ldx #NMBOMBS
-            ldy AlienPosYc
-            sty AlienCurrY      ; Load the current vertical position of aliens
-@loop1:     asl AliensR1
-            bcc @ret1
-            jsr DropBomb
-@ret1:      dex
-            bne @loop1          ; End of loop for processing the first line
-            inc AlienCurrY
-            inc AlienCurrY
-            ldy AlienCurrY
-            ldx #NMBOMBS
-@loop2:     lda AliensR2
-            asl AliensR2
-            bcc @ret2
-            jsr DropBomb
-@ret2:      dex
-            bne @loop2
+;FallBombs:  inc Bombcntr
+;            lda Bombcntr
+;            cmp TentaclePeriod
+;            bcc DrawBombs
+;            lda #0
+;            sta Bombcntr
+;            lda AliensR1s
+;            sta AliensR1
+;            lda AliensR2s
+;            sta AliensR2
+;            jsr GetRand         ; To avoid having to draw a pseudorandom number
+;            lda Random          ; each time, this is done once and the results
+;            sta tprnd1          ; are shifted inside two temporary registers
+;            lda Random+1        ; This yields a result random enough for the
+;            sta tprnd1+1        ; purposes of dropping bombs.
+;            ldx #NMBOMBS
+;            ldy AlienPosYc
+;            sty AlienCurrY      ; Load the current vertical position of aliens
+;@loop1:     asl AliensR1
+;            bcc @ret1
+;            jsr DropBomb
+;@ret1:      dex
+;            bne @loop1          ; End of loop for processing the first line
+;            inc AlienCurrY
+;            inc AlienCurrY
+;            ldy AlienCurrY
+;            ldx #NMBOMBS
+;@loop2:     lda AliensR2
+;            asl AliensR2
+;            bcc @ret2
+;            jsr DropBomb
+;@ret2:      dex
+;            bne @loop2
+;
+;            ldx #NMBOMBS        ; Update the position of the bombs
+;@loop3:     lda BombSpeed-1,X   ; Check that the bomb is active (speed>0)
+;            beq @cont
+;            clc                 ; If speed !=0, update current Y position
+;            adc BombPosY-1,X
+;            cmp #31             ; Check if we reached the last line
+;            bcc @stillf
+;            lda #$FF            ; In this case, destroy the bomb
+;            sta BombSpeed-1,X
+;@stillf:    sta BombPosY-1,X
+;@cont:      dex
+;            bne @loop3
 
-            ldx #NMBOMBS        ; Update the position of the bombs
-@loop3:     lda BombSpeed-1,X   ; Check that the bomb is active (speed>0)
-            beq @cont
-            clc                 ; If speed !=0, update current Y position
-            adc BombPosY-1,X
-            cmp #31             ; Check if we reached the last line
-            bcc @stillf
-            lda #$FF            ; In this case, destroy the bomb
-            sta BombSpeed-1,X
-@stillf:    sta BombPosY-1,X
-@cont:      dex
-            bne @loop3
+;DrawBombs:  ldx #0              ; Draw bombs
+;            lda TentaclePeriod      ; Colour of the bombs
+;            sta Colour
+;@loop4:     stx tmpindex
+;            lda BombSpeed,X     ; Do not draw inactive bombs
+;            beq @notmove
+;            stx tmpindex
+;            lda BombPosX,X
+;            sta tmpx            ; Store the X position of the bomb
+;            lda BombPosOY,X
+;            cmp BombPosY,X
+;            beq @notmove
+;            tay
+;            lda #EMPTY          ; Erase the previous bomb
+;            ldx tmpx            ; Load the X position
+;            jsr DrawChar        ; Erase the bomb in the old position
+;            ldx tmpindex
+;            lda BombSpeed,X
+;            cmp #$FF            ; If the speed is #$FF, do not draw the bomb
+;            bne @normal
+;            lda #$00
+;            sta BombSpeed,X
+;            beq @notmove
+;@normal:    lda BombPosY,X
+;            sta BombPosOY,X     ; Save the current position
+;            sta tmpy
+;            tay
+;            ldx tmpx
+;            jsr GetChar         ; Check for a collision
+;            cmp #EMPTY
+;            beq @drawbomb
+;            cmp #CANNON
+;            beq @BombExpl        ; Explode the bomb
+;            cmp #BLOCK
+;            beq @explode         ; Explode the bomb
+;            cmp #BLOCKR
+;            beq @explode         ; Explode the bomb
+;            cmp #BLOCKL
+;            beq @explode         ; Explode the bomb
+;@drawbomb:  lda #BOMB
+;            jsr DrawChar        ; Draw the bomb in the new position
+;@notmove:   ldx tmpindex
+;            inx
+;            cpx #NMBOMBS
+;            bne @loop4
+;            rts
 
-DrawBombs:  ldx #0              ; Draw bombs
-            lda TentaclePeriod      ; Colour of the bombs
-            sta Colour
-@loop4:     stx tmpindex
-            lda BombSpeed,X     ; Do not draw inactive bombs
-            beq @notmove
-            stx tmpindex
-            lda BombPosX,X
-            sta tmpx            ; Store the X position of the bomb
-            lda BombPosOY,X
-            cmp BombPosY,X
-            beq @notmove
-            tay
-            lda #EMPTY          ; Erase the previous bomb
-            ldx tmpx            ; Load the X position
-            jsr DrawChar        ; Erase the bomb in the old position
-            ldx tmpindex
-            lda BombSpeed,X
-            cmp #$FF            ; If the speed is #$FF, do not draw the bomb
-            bne @normal
-            lda #$00
-            sta BombSpeed,X
-            beq @notmove
-@normal:    lda BombPosY,X
-            sta BombPosOY,X     ; Save the current position
-            sta tmpy
-            tay
-            ldx tmpx
-            jsr GetChar         ; Check for a collision
-            cmp #EMPTY
-            beq @drawbomb
-            cmp #CANNON
-            beq @BombExpl        ; Explode the bomb
-            cmp #BLOCK
-            beq @explode         ; Explode the bomb
-            cmp #BLOCKR
-            beq @explode         ; Explode the bomb
-            cmp #BLOCKL
-            beq @explode         ; Explode the bomb
-@drawbomb:  lda #BOMB
-            jsr DrawChar        ; Draw the bomb in the new position
-@notmove:   ldx tmpindex
-            inx
-            cpx #NMBOMBS
-            bne @loop4
-            rts
-
-@BombExpl:  cmp #CANNON         ; Check if the cannon has been hit
-            bne @explode
-            jsr GameOver        ; If yes... player has lost!
-            ldx tmpx
-            ldy tmpy
-@explode:   lda #EXPLOSION1     ; Draw an explosion
-            jsr DrawChar
-            lda #$FF            ; Delete the bomb
-            ldx tmpindex
-            sta BombSpeed,X
-            jmp @notmove
+;@BombExpl:  cmp #CANNON         ; Check if the cannon has been hit
+;            bne @explode
+;            jsr GameOver        ; If yes... player has lost!
+;            ldx tmpx
+;            ldy tmpy
+;@explode:   lda #EXPLOSION1     ; Draw an explosion
+;            jsr DrawChar
+;            lda #$FF            ; Delete the bomb
+;            ldx tmpindex
+;            sta BombSpeed,X
+;            jmp @notmove
 
 ; Decide if a bomb should be dropped or not.
 
-DropBomb:   clc
-            ror tprnd1+1
-            ror tprnd1
-            lda tprnd1          ; Get a random number and check if it is less
-            cmp #TENTPROB       ; than a given threshold
-            bcc @nobomb
-            ldy #$FF            ; That will overflow to 0 at the first iny
-@searchlp:  iny
-            cpy #NMBOMBS        ; Check if there is still place for bombs
-            beq @nobomb
-            lda BombSpeed,Y     ; Check if the current bomb is not active
-            bne @searchlp
-            lda #1
-            sta BombSpeed,Y
-            lda SpriteX
-            sta tmpp
-            lda AlienCurrY
-            sta BombPosY,Y
-            txa
-            asl
-            adc PixPosX
-            ror Random+1
-            sbc #1
-            ror tmpp
-            ror tmpp
-            adc #$0
-            sta BombPosX,Y
-@nobomb:    rts
+;DropBomb:   clc
+;            ror tprnd1+1
+;            ror tprnd1
+;            lda tprnd1          ; Get a random number and check if it is less
+;            cmp #TENTPROB       ; than a given threshold
+;            bcc @nobomb
+;            ldy #$FF            ; That will overflow to 0 at the first iny
+;@searchlp:  iny
+;            cpy #NMBOMBS        ; Check if there is still place for bombs
+;            beq @nobomb
+;            lda BombSpeed,Y     ; Check if the current bomb is not active
+;            bne @searchlp
+;            lda #1
+;            sta BombSpeed,Y
+;            lda SpriteX
+;            sta tmpp
+;            lda AlienCurrY
+;            sta BombPosY,Y
+;            txa
+;            asl
+;            adc PixPosX
+;            ror Random+1
+;            sbc #1
+;            ror tmpp
+;            ror tmpp
+;            adc #$0
+;            sta BombPosX,Y
+;@nobomb:    rts
 
 ; Music driver for voice 1. It should be called every IRQ to handle music
 
@@ -1957,7 +1953,7 @@ BombPosX:   .res NMBOMBS, $00   ; Array with X positions of bombs
 BombPosY:   .res NMBOMBS, $00   ; Array with Y positions of bombs
 BombPosOY:  .res NMBOMBS, $00   ; Array with old Y positions of bombs
 
-FireSpeed:  .res NMSHOTS, $00   ; Array containing the speed of the bullet sent
+TentacleSpeed:  .res NMSHOTS, $00   ; Array containing the speed of the bullet sent
 FirePosX:   .res NMSHOTS, $00   ; Array with X positions of bullet
 FirePosY:   .res NMSHOTS, $00   ; Array with Y positions of bullet
 FirePosOY:  .res NMSHOTS, $00   ; Array with old Y positions of bullet
@@ -2025,7 +2021,7 @@ GameOverSt: .byte (7+$80), (1+$80), (13+$80), (5+$80), (32+$80), (15+$80)
             .byte (22+$80), (5+$80), (18+$80), 0
 
 DefChars:
-            ALIEN1 = 0
+            TENTACLE1 = 0
             .byte %00111100     ; Alien #1, associated to ch. 0 (normally @)
             .byte %01111110
             .byte %11011011
@@ -2035,7 +2031,7 @@ DefChars:
             .byte %01000010
             .byte %10000001
 
-            ALIEN2 = 1
+            TENTACLE2 = 1
             .byte %00111100     ; Alien #2, associated to ch. 1 (normally A)
             .byte %01111110
             .byte %11011011
@@ -2045,7 +2041,7 @@ DefChars:
             .byte %01100110
             .byte %00000000
 
-            ALIEN3 = 2
+            TENTACLE3 = 2
             .byte %10000001     ; Alien #3, associated to ch. 2 (normally B)
             .byte %01111110
             .byte %11011011
@@ -2055,7 +2051,7 @@ DefChars:
             .byte %11000011
             .byte %00100100
 
-            ALIEN4 = 3
+            TENTACLE4 = 3
             .byte %10000001     ; Alien #4, associated to ch. 3 (normally C)
             .byte %01111110
             .byte %11011011
@@ -2065,7 +2061,7 @@ DefChars:
             .byte %01000010
             .byte %10000001
 
-            CANNON = 4
+            PLAYER = 4
             .byte %00010000     ; Cannon, associated to ch. 4 (normally D)
             .byte %00111000
             .byte %00111000
