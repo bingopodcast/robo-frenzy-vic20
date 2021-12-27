@@ -789,18 +789,18 @@ Voice2data: ; Measures 1 - 6
             .byte la1,la1,la1,la1
 
 FileName:   .byte "robo-frenzy"
-FileNameLen = 9
+FileNameLen = 11
             ;     "                      "
 TitleGame:  .byte "                      "
             .byte "                      "
             .byte "                      "
             .byte "    ",('R'-'@'),('O'-'@'),('B'-'@')
-            .byte ('O'-'@'),('F'-'@'),('R'-'@')
+            .byte ('O'-'@'),(45+$80),('F'-'@'),('R'-'@')
             .byte ('E'-'@'),('N'-'@'),('Z'-'@'),('Y'-'@')
             .byte "      "
             .byte "                      "
-            .byte "   ",('C'-'@'),(46+$80)," ", (50+$80),(48+$80),(50+$80)
-            .byte 50+$80," ",('F'-'@'),(46+$80),('A'-'@'),(46+$80),('O'-'@'),(46+$80)
+            .byte "   ",('C'-'@'),(46+$80),(39+$80),(50+$80)
+            .byte 50+$80," ",('N'-'@'),(46+$80),('B'-'@'),('A'-'@'),('L'-'@'),('D'-'@'),('R'-'@'),('I'-'@'),('D'-'@'),('G'-'@'),('E'-'@')
             .byte "   ",0
 
 ;ScoreDesc:  .byte "                      "
@@ -811,27 +811,17 @@ TitleGame:  .byte "                      "
 ;            .byte "                      ",0
 
 ScoreDesc:   .byte "                      "
-             .byte "    ",HEAD, " ",(49+$80),(48+$80)
+             .byte "   ",HEAD, "  ",(50+$80),(48+$80)
              .byte " ", ('P'-'@'),('T'-'@'),"       "
-             .byte " ",LARM,RARM, " ",(49+$80),(48+$80)
+             .byte "      ",LARM,TORSO,RARM, " ",(49+$80),(48+$80)
              .byte " ", ('P'-'@'),('T'-'@'),"       "
+             .byte "      ",LLEG," ",RLEG, " ",(49+$80),(48+$80)
+             .byte " ", ('P'-'@'),('T'-'@'),"       "
+             ;.byte " ", ('B'-'@'),('R'-'@'),('I'-'@'),('N'-'@'),('G'-'@')," ",GEAR," ",('U'-'@'),('P'-'@')," ",('H'-'@'),('I'-'@'),('L'-@'),('L'-'@'),"  "
+             .byte " ", ('B'-'@'),('R'-'@'),('I'-'@'),('N'-'@'),('G'-'@')," ",GEAR,"  "
              .byte "                      "
              .byte "                      "
-             .byte "     ", MOTHER1,HEAD,MOTHER3,"  ",(53+$80),(48+$80)
-             .byte " ",('P'-'@'),('T'-'@'), "        "
              .byte "                      ",0
-
-
-;ScoreDesc:  .byte "                      "
-;            .byte "                      "
-;            .byte "                      "
-;            .byte "    ", LARM," ",(49+$80),(48+$80)
-;            .byte " ", ('P'='@'),('T'-'@')
-;            .byte "    ", HEAD," ",(50+$80),(48+$80)
-;            .byte " ", ('P'-'@'),('T'-'@')
-;            .byte "    ", RARM, " ",(49+$80),(48+$80)
-;            .byte " ", ('P'='@'),('T'-'@')
-;            .byte "   ",0
 
 Keys:       .byte "                      "
             .byte  "            ",27+128,('Z'-'@'),29+128, "   ",  ('L'-'@')
@@ -876,12 +866,12 @@ LoadCmdLen=5
 LoadCmd:    .byte 131,13,13
 
 DefChars:
-            LARM = 0
-            .byte %01111110     ; Alien #1, associated to ch. 0 (normally @)
-            .byte %01100110
-            .byte %01100110
-            .byte %01100110
-            .byte %01100110
+            ALIEN1 = 0
+            .byte %00000111     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
             .byte %01100110
             .byte %00111100
             .byte %00011000
@@ -897,44 +887,34 @@ DefChars:
             .byte %00000000
 
             RARM = 2
-            .byte %01111110     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %11100000     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
             .byte %01100110
+            .byte %00111100
+            .byte %00011000
+
+            LARM = 3
+            .byte %00000111     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %01100110
+            .byte %00111100
+            .byte %00011000
+
+            TORSO = 4
+            .byte %11111111     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %11100111
             .byte %01100110
             .byte %01100110
             .byte %01100110
             .byte %01100110
             .byte %00111100
             .byte %00011000
-
-            ;ALIEN3 = 2
-            ;.byte %10000001     ; Alien #3, associated to ch. 2 (normally B)
-            ;.byte %01111110
-            ;.byte %11011011
-            ;.byte %11111111
-            ;.byte %01100110
-            ;.byte %00111100
-            ;.byte %11000011
-            ;.byte %00100100
-
-            ALIEN4 = 3
-            .byte %10000001     ; Alien #4, associated to ch. 3 (normally C)
-            .byte %01111110
-            .byte %11011011
-            .byte %11111111
-            .byte %01100110
-            .byte %00111100
-            .byte %01000010
-            .byte %10000001
-
-            CANNON = 4
-            .byte %00010000     ; Cannon, associated to ch. 4 (normally D)
-            .byte %00111000
-            .byte %00111000
-            .byte %00111000
-            .byte %00111000
-            .byte %01111100
-            .byte %11111110
-            .byte %11111110
 
             EMPTY = 5
             .byte %00000000     ; Blank char, ch. 5 (E)
@@ -946,15 +926,15 @@ DefChars:
             .byte %00000000
             .byte %00000000
 
-            BOMB = 6
-            .byte %00000000     ; Bomb, associated to ch. 6 (normally F)
-            .byte %00000000
-            .byte %00000000
-            .byte %00011000
-            .byte %00000000
-            .byte %00000000
-            .byte %00000000
-            .byte %00000000
+            LLEG = 6
+            .byte %00000111     ; Bomb, associated to ch. 6 (normally F)
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00011110
+            .byte %00111110
 
             BLOCK = 7
             .byte %11111111     ; Block, ch. 7 (normally G)
@@ -986,25 +966,25 @@ DefChars:
             .byte %11111110
             .byte %11111110
 
-            SHOT = 10
-            .byte %00010000     ; Block, ch. 10 (normally L)
-            .byte %00010000
-            .byte %00010000
-            .byte %00010000
-            .byte %00000000
-            .byte %00010000
-            .byte %00000000
-            .byte %00010000
+            RLEG = 10
+            .byte %11100000     ; Bomb, associated to ch. 6 (normally F)
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01110000
+            .byte %01111000
 
-            EXPLOSION1=11
-            .byte %01000000     ; Block, ch. 11 (normally M)
-            .byte %10010010
-            .byte %01000100
-            .byte %0011100
-            .byte %10011010
-            .byte %10110001
-            .byte %01100011
-            .byte %10000001
+            GEAR=11
+            .byte %10011001     ; Block, ch. 11 (normally M)
+            .byte %01011010
+            .byte %00111100
+            .byte %11111111
+            .byte %00111100
+            .byte %11111111
+            .byte %01011010
+            .byte %10011001
 
             MOTHER1=12
             .byte %00000000     ; Mother ship 1
