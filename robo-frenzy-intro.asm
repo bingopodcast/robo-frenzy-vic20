@@ -789,7 +789,8 @@ Voice2data: ; Measures 1 - 6
             .byte la1,la1,la1,la1
 
 FileName:   .byte "robo-frenzy"
-FileNameLen = 11
+
+FileNameLen = 10
             ;     "                      "
 TitleGame:  .byte "                      "
             .byte "                      "
@@ -802,13 +803,6 @@ TitleGame:  .byte "                      "
             .byte "   ",('C'-'@'),(46+$80),(39+$80),(50+$80)
             .byte 50+$80," ",('N'-'@'),(46+$80),('B'-'@'),('A'-'@'),('L'-'@'),('D'-'@'),('R'-'@'),('I'-'@'),('D'-'@'),('G'-'@'),('E'-'@')
             .byte "   ",0
-
-;ScoreDesc:  .byte "                      "
-;            .byte "                      "
-;            .byte "    ", ALIEN2," ",(49+$80),(48+$80)
-;            .byte " ", ('P'-'@'),('T'-'@'),"       "
-;            .byte "                      "
-;            .byte "                      ",0
 
 ScoreDesc:   .byte "                      "
              .byte "   ",HEAD, "  ",(50+$80),(48+$80)
