@@ -475,7 +475,7 @@ ConfLevel:  ldx Level
 ;            ldy BunkerY
 ;            lda Period
 ;            sta Colour
-;            lda #BLOCK
+;            lda #HEAD
 ;            jsr DrawChar
 ;            inx
 ;            jsr DrawChar
@@ -493,28 +493,28 @@ ConfLevel:  ldx Level
 ;            jsr DrawChar
 ;            ldx #1
 ;            dey
-;            lda #BLOCKL
+;            lda #GEAR
 ;            jsr DrawChar
 ;            inx
-;            lda #BLOCKR
+;            lda #TORSO
 ;            jsr DrawChar
 ;            ldx #5
-;            lda #BLOCKL
+;            lda #GEAR
 ;            jsr DrawChar
 ;            inx
-;            lda #BLOCKR
+;            lda #TORSO
 ;            jsr DrawChar
 ;            ldx #9
-;            lda #BLOCKL
+;            lda #GEAR
 ;            jsr DrawChar
 ;            inx
-;            lda #BLOCKR
+;            lda #TORSO
 ;            jsr DrawChar
 ;            ldx #13
-;            lda #BLOCKL
+;            lda #GEAR
 ;            jsr DrawChar
 ;            inx
-;            lda #BLOCKR
+;            lda #TORSO
 ;            jmp DrawChar
 
 draw1l:
@@ -751,7 +751,7 @@ IrqHandler: pha
 ;            dec MotherPos
 ;            beq @exitsh
 ;            ldx MotherPos   ; Draw the ship
-;            lda #MOTHER1
+;            lda #RARM
 ;            jsr DrawChar
 ;            inx
 ;            lda #MOTHER2
@@ -1185,13 +1185,13 @@ collision:  cmp #SPRITE1A
             ldy tmpy
             pla
 
-            cmp #BLOCK
+            cmp #HEAD
             beq bunkershot
-            cmp #BLOCKR
+            cmp #TORSO
             beq bunkershot
-            cmp #BLOCKL
+            cmp #GEAR
             beq bunkershot
-            cmp #MOTHER1
+            cmp #RARM
             ;beq robotshot
             cmp #MOTHER2
             ;beq robotshot
@@ -1242,7 +1242,7 @@ speedup:
 
 bunkershot: lda #RED+MULTICOLOUR
             sta Colour
-            lda #EXPLOSION1
+            lda #LARM
             jsr DrawChar
             lda #$FF
             ldx tmpindex
@@ -1259,7 +1259,7 @@ Explosion:  ldx tmpindex
             lda #YELLOW+MULTICOLOUR
             sta FireColOver,X
             sta Colour
-            lda #EXPLOSION1
+            lda #LARM
             sta FireChOver,X
             rts
 
@@ -1426,11 +1426,11 @@ GameOver:   lda #$00            ; Mute all effects
 ;            beq @drawbomb
 ;            cmp #CANNON
 ;            beq @BombExpl        ; Explode the bomb
-;            cmp #BLOCK
+;            cmp #HEAD
 ;            beq @explode         ; Explode the bomb
-;            cmp #BLOCKR
+;            cmp #TORSO
 ;            beq @explode         ; Explode the bomb
-;            cmp #BLOCKL
+;            cmp #GEAR
 ;            beq @explode         ; Explode the bomb
 ;@drawbomb:  lda #BOMB
 ;            jsr DrawChar        ; Draw the bomb in the new position
@@ -1445,7 +1445,7 @@ GameOver:   lda #$00            ; Mute all effects
 ;            jsr GameOver        ; If yes... player has lost!
 ;            ldx tmpx
 ;            ldy tmpy
-;@explode:   lda #EXPLOSION1     ; Draw an explosion
+;@explode:   lda #LARM     ; Draw an explosion
 ;            jsr DrawChar
 ;            lda #$FF            ; Delete the bomb
 ;            ldx tmpindex
@@ -2022,16 +2022,56 @@ GameOverSt: .byte (7+$80), (1+$80), (13+$80), (5+$80), (32+$80), (15+$80)
 
 DefChars:
             TENTACLE1 = 0
-            .byte %00111100     ; Alien #1, associated to ch. 0 (normally @)
-            .byte %01111110
-            .byte %11011011
-            .byte %11111111
-            .byte %01100110
+            .byte %00000000     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %00000001
+            .byte %11000111
+            .byte %11101110
             .byte %00111100
-            .byte %01000010
-            .byte %10000001
+            .byte %00111000
+            .byte %00000000
+            .byte %00000000
 
             TENTACLE2 = 1
+            .byte %00000000     ; Alien #2, associated to ch. 1 (normally A)
+            .byte %00000000
+            .byte %10000001
+            .byte %11000111
+            .byte %01100110
+            .byte %00111100
+            .byte %00000000
+            .byte %00000000
+
+            TENTACLE3 = 2
+            .byte %00000000     ; Alien #3, associated to ch. 2 (normally B)
+            .byte %00000000
+            .byte %11000001
+            .byte %11100011
+            .byte %01101110
+            .byte %00011100
+            .byte %00000000
+            .byte %00100100
+
+            TENTACLE4 = 3
+            .byte %00000000     ; Alien #4, associated to ch. 3 (normally C)
+            .byte %00000000
+            .byte %00000011
+            .byte %00111111
+            .byte %01111100
+            .byte %01111100
+            .byte %01111100
+            .byte %11111100
+
+            PLAYER = 4
+            .byte %11001100     ; Mother ship 1
+            .byte %01101100
+            .byte %00111100
+            .byte %00011110
+            .byte %00001100
+            .byte %00010010
+            .byte %00010010
+            .byte %00110110
+
+            HEAD = 5
             .byte %00111100     ; Alien #2, associated to ch. 1 (normally A)
             .byte %01111110
             .byte %11011011
@@ -2041,37 +2081,37 @@ DefChars:
             .byte %01100110
             .byte %00000000
 
-            TENTACLE3 = 2
-            .byte %10000001     ; Alien #3, associated to ch. 2 (normally B)
-            .byte %01111110
-            .byte %11011011
-            .byte %11111111
+            RARM = 6
+            .byte %11100000     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
             .byte %01100110
             .byte %00111100
-            .byte %11000011
-            .byte %00100100
+            .byte %00011000
 
-            TENTACLE4 = 3
-            .byte %10000001     ; Alien #4, associated to ch. 3 (normally C)
-            .byte %01111110
-            .byte %11011011
-            .byte %11111111
+            LARM = 7
+            .byte %00000111     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
             .byte %01100110
             .byte %00111100
-            .byte %01000010
-            .byte %10000001
+            .byte %00011000
 
-            PLAYER = 4
-            .byte %00010000     ; Cannon, associated to ch. 4 (normally D)
-            .byte %00111000
-            .byte %00111000
-            .byte %00111000
-            .byte %00111000
-            .byte %01111100
-            .byte %11111110
-            .byte %11111110
+            TORSO = 8
+            .byte %11111111     ; Alien #1, associated to ch. 0 (normally @)
+            .byte %11100111
+            .byte %01100110
+            .byte %01100110
+            .byte %01100110
+            .byte %01100110
+            .byte %00111100
+            .byte %00011000
 
-            EMPTY = 5
+            EMPTY = 9
             .byte %00000000     ; Blank char, ch. 5 (E)
             .byte %00000000
             .byte %00000000
@@ -2081,77 +2121,37 @@ DefChars:
             .byte %00000000
             .byte %00000000
 
-            BOMB = 6
-            .byte %00000000     ; Bomb, associated to ch. 6 (normally F)
-            .byte %00000000
-            .byte %00100100
-            .byte %00011000
-            .byte %00100100
-            .byte %00000000
-            .byte %00000000
-            .byte %00000000
-
-            BLOCK = 7
-            .byte %11111111     ; Block, ch. 7 (normally G)
-            .byte %11111111
-            .byte %11111111
-            .byte %11111111
-            .byte %11111111
-            .byte %11111111
-            .byte %11111111
-            .byte %11111111
-
-            BLOCKL = 8
-            .byte %00000000     ; Block, ch. 8 (normally H)
-            .byte %00000000
-            .byte %00000000
-            .byte %00000111
-            .byte %00011111
-            .byte %00111111
-            .byte %01111111
-            .byte %01111111
-
-            BLOCKR = 9
-            .byte %00000000     ; Block, ch. 9 (normally I)
-            .byte %00000000
-            .byte %00000000
-            .byte %11100000
-            .byte %11111000
-            .byte %11111100
-            .byte %11111110
-            .byte %11111110
-
-            SHOT = 10
-            .byte %00010000     ; Block, ch. 10 (normally L)
-            .byte %00010000
-            .byte %00010000
-            .byte %00010000
-            .byte %00000000
-            .byte %00010000
-            .byte %00000000
-            .byte %00010000
+            LLEG = 10
+            .byte %00000111     ; Bomb, associated to ch. 6 (normally F)
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00000110
+            .byte %00011110
+            .byte %00111110
 
             SHOTMSK = %00010000 ; Mask for detecting a collision
 
-            EXPLOSION1=11
-            .byte %10000000     ; Block, ch. 11 (normally M)
-            .byte %00100010
-            .byte %10010000
-            .byte %00110100
-            .byte %11101110
-            .byte %00110000
-            .byte %00110011
-            .byte %10000010
+            RLEG = 11
+            .byte %11100000     ; Bomb, associated to ch. 6 (normally F)
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01100000
+            .byte %01110000
+            .byte %01111000
 
-            MOTHER1=12
-            .byte %00000000     ; Mother ship 1
-            .byte %00011111
-            .byte %01111111
-            .byte %11011011
+            GEAR=12
+            .byte %10011001     ; Block, ch. 11 (normally M)
+            .byte %01011010
+            .byte %00111100
             .byte %11111111
-            .byte %01111111
-            .byte %00011111
-            .byte %00000000
+            .byte %00111100
+            .byte %11111111
+            .byte %01011010
+            .byte %10011001
 
             MOTHER2=13
             .byte %00000000     ; Mother ship 2
@@ -2172,6 +2172,7 @@ DefChars:
             .byte %11111100
             .byte %11110011
             .byte %00000000
+
 
             LASTCH = MOTHER3
             SPRITE1A = LASTCH+1
