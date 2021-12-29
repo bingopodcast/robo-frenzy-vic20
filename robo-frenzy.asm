@@ -35,7 +35,7 @@
 ;; cannon should be player
 
 ; Difficulty-related constants
-        BOMBPROB = $F0      ; Higher = less bombs falling
+        ;BOMBPROB = $F0      ; Higher = less bombs falling
         SHIPPROB = $F5      ; Higher = less mother ships
         PERIODS = 5         ; Initial difficulty (less=faster)
 
@@ -156,6 +156,7 @@
         Loop2ctr  = $57
         Loop2str  = $58
         Voice2drt = $59
+
         Voice2nod = $60
 
         tprnd1    = $61
@@ -163,6 +164,7 @@
 
         mothercntr= $63
         aliencntr = $64
+        OldCannonY= $65
 
         INITVALC=$ede4
 
@@ -247,17 +249,23 @@ mainloop:   lda Joystick
 
 right:      inc CannonPos
             lda CannonPos
-            cmp #15
+            inc CannonYPos
+            cmp #8
             bcc @continue
-            lda #15
+            lda #8
             sta CannonPos
+            lda CannonYPos
+            sta OldCannonY
 @continue:  jmp mainloop
 
 left:       dec CannonPos
             bmi @zeroc
+            dec CannonYPos
             jmp mainloop
 @zeroc:     lda #0
             sta CannonPos
+;            lda CannonYPos
+;            sta OldCannonY
             jmp mainloop
 
 fire:       lda Win         ; If the game has stopped, restart
@@ -356,7 +364,7 @@ SyncNTSC:
 ; Screen init value for PAL and NTSC
 
 CenterScreenPAL:
-            lda #30
+            lda #16
             sta CannonYPos
             lda #$3E        ; Set a 31 row-high column
             sta VICROWNC
@@ -369,7 +377,7 @@ CenterScreenPAL:
             jmp ContInit
 
 CenterScreenNTSC:
-            lda #26
+            lda #12
             sta CannonYPos
             lda #$36        ; Set a 27 row-high column
             sta VICROWNC
@@ -395,7 +403,7 @@ StartGame:
             sta AliensR2s
             sta AliensR3s
             sta OldCannonP
-            lda #8
+            lda #0
             sta CannonPos   ; Initial position of the cannon
             lda #$00
             sta Direction
@@ -406,10 +414,10 @@ StartGame:
             sta AlienPosX
             jsr ConfLevel
             ldx #NMBOMBS    ; Clear all bombs
-@loopg:     LDA #$0
-            sta BombSpeed-1,X
-            lda #$FF
-            sta BombPosOY-1,X
+@loopg:     ;LDA #$0
+            ;sta BombSpeed-1,X
+            ;lda #$FF
+            ;sta BombPosOY-1,X
             lda #EMPTY
             dex
             bne @loopg
@@ -454,7 +462,7 @@ ConfLevel:  ldx Level
             bmi @validlevel
             ldx #NUMLEVEL-1
             stx Level
-@validlevel:lda LevelsBomb,x
+@validlevel:;lda LevelsBomb,x
             sta TentaclePeriod
             lda LevelsPer,x
             sta Period
@@ -763,6 +771,7 @@ DrawCannon: lda CannonPos
             sta OldCannonP
             tax
             ldy CannonYPos      ; Vertical position of the cannon
+            sty OldCannonY
             lda #WHITE          ; Cannon in white
             sta Colour
             lda #PLAYER         ; Cannon char
@@ -773,7 +782,7 @@ DrawCannon: lda CannonPos
 
 ClearCannon:
             ldx OldCannonP
-            ldy CannonYPos      ; Vertical position of the cannon
+            ldy OldCannonY      ; Vertical position of the cannon
             lda #WHITE          ; Cannon in white
             sta Colour
             lda #EMPTY          ; Space
@@ -1344,7 +1353,7 @@ GameOver:   lda #$00            ; Mute all effects
 MoveTentacles:  inc Tentaclecntr
             lda Tentaclecntr
             cmp TentaclePeriod
-            bcc DrawBombs
+            ;bcc DrawBombs
             lda #0
             sta Tentaclecntr
             lda AliensR1s
@@ -1361,122 +1370,122 @@ MoveTentacles:  inc Tentaclecntr
             sty AlienCurrY      ; Load the current vertical position of aliens
 @loop1:     asl AliensR1
             bcc @ret1
-            jsr DropBomb
+            ;jsr DropBomb
 @ret1:      dex
             bne @loop1          ; End of loop for processing the first line
             inc AlienCurrY
             inc AlienCurrY
             ldy AlienCurrY
-            ldx #NMBOMBS
+            ;ldx #NMBOMBS
 @loop2:     lda AliensR2
             asl AliensR2
             bcc @ret2
-            jsr DropBomb
+            ;jsr DropBomb
 @ret2:      dex
             bne @loop2
 
-            ldx #NMBOMBS        ; Update the position of the bombs
-@loop3:     lda BombSpeed-1,X   ; Check that the bomb is active (speed>0)
-            beq @cont
-            clc                 ; If speed !=0, update current Y position
-            adc BombPosY-1,X
-            cmp #31             ; Check if we reached the last line
-            bcc @stillf
-            lda #$FF            ; In this case, destroy the bomb
-            sta BombSpeed-1,X
-@stillf:    sta BombPosY-1,X
+            ;ldx #NMBOMBS        ; Update the position of the bombs
+;@loop3:     ;lda BombSpeed-1,X   ; Check that the bomb is active (speed>0)
+            ;beq @cont
+            ;clc                 ; If speed !=0, update current Y position
+            ;adc BombPosY-1,X
+            ;cmp #31             ; Check if we reached the last line
+            ;bcc @stillf
+            ;lda #$FF            ; In this case, destroy the bomb
+            ;sta BombSpeed-1,X
+;@stillf:    sta BombPosY-1,X
 @cont:      dex
-            bne @loop3
+            ;bne @loop3
 
-DrawBombs:  ldx #0              ; Draw bombs
-            lda TentaclePeriod      ; Colour of the bombs
-            sta Colour
-@loop4:     stx tmpindex
-            lda BombSpeed,X     ; Do not draw inactive bombs
-            beq @notmove
-            stx tmpindex
-            lda BombPosX,X
-            sta tmpx            ; Store the X position of the bomb
-            lda BombPosOY,X
-            cmp BombPosY,X
-            beq @notmove
-            tay
-            lda #EMPTY          ; Erase the previous bomb
-            ldx tmpx            ; Load the X position
-            jsr DrawChar        ; Erase the bomb in the old position
-            ldx tmpindex
-            lda BombSpeed,X
-            cmp #$FF            ; If the speed is #$FF, do not draw the bomb
-            bne @normal
-            lda #$00
-            sta BombSpeed,X
-            beq @notmove
-@normal:    lda BombPosY,X
-            sta BombPosOY,X     ; Save the current position
-            sta tmpy
-            tay
-            ldx tmpx
-            jsr GetChar         ; Check for a collision
-            cmp #EMPTY
-            beq @drawbomb
-            cmp #PLAYER
-            beq @BombExpl        ; Explode the bomb
-            cmp #1
-            beq @explode         ; Explode the bomb
-            cmp #1
-            beq @explode         ; Explode the bomb
-            cmp #1
-            beq @explode         ; Explode the bomb
-@drawbomb:  lda #TENTACLE1
-            jsr DrawChar        ; Draw the bomb in the new position
-@notmove:   ldx tmpindex
-            inx
-            cpx #NMBOMBS
-            bne @loop4
-            rts
-
-@BombExpl:  cmp #PLAYER         ; Check if the cannon has been hit
-            bne @explode
-            jsr GameOver        ; If yes... player has lost!
-            ldx tmpx
-            ldy tmpy
-@explode:   lda #1     ; Draw an explosion
-            jsr DrawChar
-            lda #$FF            ; Delete the bomb
-            ldx tmpindex
-            sta BombSpeed,X
-            jmp @notmove
+;DrawBombs:  ldx #0              ; Draw bombs
+            ;lda TentaclePeriod      ; Colour of the bombs
+            ;sta Colour
+;@loop4:     stx tmpindex
+;            lda BombSpeed,X     ; Do not draw inactive bombs
+;            beq @notmove
+;            stx tmpindex
+;            lda BombPosX,X
+;            sta tmpx            ; Store the X position of the bomb
+;            lda BombPosOY,X
+;            cmp BombPosY,X
+;            beq @notmove
+;            tay
+;            lda #EMPTY          ; Erase the previous bomb
+;            ldx tmpx            ; Load the X position
+;            jsr DrawChar        ; Erase the bomb in the old position
+;            ldx tmpindex
+;            lda BombSpeed,X
+;            cmp #$FF            ; If the speed is #$FF, do not draw the bomb
+;            bne @normal
+;            lda #$00
+;            sta BombSpeed,X
+;            beq @notmove
+;@normal:    lda BombPosY,X
+;            sta BombPosOY,X     ; Save the current position
+;            sta tmpy
+;            tay
+;            ldx tmpx
+;            jsr GetChar         ; Check for a collision
+;            cmp #EMPTY
+;            beq @drawbomb
+;            cmp #PLAYER
+;            beq @BombExpl        ; Explode the bomb
+;            cmp #1
+;            beq @explode         ; Explode the bomb
+;            cmp #1
+;            beq @explode         ; Explode the bomb
+;            cmp #1
+;            beq @explode         ; Explode the bomb
+;@drawbomb:  lda #TENTACLE1
+;            jsr DrawChar        ; Draw the bomb in the new position
+;@notmove:   ldx tmpindex
+;            inx
+;            cpx #NMBOMBS
+;            bne @loop4
+;            rts
+;
+;@BombExpl:  cmp #PLAYER         ; Check if the cannon has been hit
+;            bne @explode
+;            jsr GameOver        ; If yes... player has lost!
+;            ldx tmpx
+;            ldy tmpy
+;@explode:   lda #1     ; Draw an explosion
+;            jsr DrawChar
+;            lda #$FF            ; Delete the bomb
+;            ldx tmpindex
+;            sta BombSpeed,X
+;            jmp @notmove
 
 ; Decide if a bomb should be dropped or not.
 
-DropBomb:   clc
-            ror tprnd1+1
-            ror tprnd1
-            lda tprnd1          ; Get a random number and check if it is less
-            cmp #BOMBPROB       ; than a given threshold
-            bcc @nobomb
-            ldy #$FF            ; That will overflow to 0 at the first iny
-@searchlp:  iny
-            cpy #NMBOMBS        ; Check if there is still place for bombs
-            beq @nobomb
-            lda BombSpeed,Y     ; Check if the current bomb is not active
-            bne @searchlp
-            lda #1
-            sta BombSpeed,Y
-            lda SpriteX
-            sta tmpp
-            lda AlienCurrY
-            sta BombPosY,Y
-            txa
-            asl
-            adc PixPosX
-            ror Random+1
-            sbc #1
-            ror tmpp
-            ror tmpp
-            adc #$0
-            sta BombPosX,Y
-@nobomb:    rts
+;DropBomb:   clc
+;            ror tprnd1+1
+;            ror tprnd1
+;            lda tprnd1          ; Get a random number and check if it is less
+;            cmp #BOMBPROB       ; than a given threshold
+;            bcc @nobomb
+;            ldy #$FF            ; That will overflow to 0 at the first iny
+;@searchlp:  iny
+;            cpy #NMBOMBS        ; Check if there is still place for bombs
+;            beq @nobomb
+;            lda BombSpeed,Y     ; Check if the current bomb is not active
+;            bne @searchlp
+;            lda #1
+;            sta BombSpeed,Y
+;            lda SpriteX
+;            sta tmpp
+;            lda AlienCurrY
+;            sta BombPosY,Y
+;            txa
+;            asl
+;            adc PixPosX
+;            ror Random+1
+;            sbc #1
+;            ror tmpp
+;            ror tmpp
+;            adc #$0
+;            sta BombPosX,Y
+;@nobomb:    rts
 
 ; Music driver for voice 1. It should be called every IRQ to handle music
 
@@ -1943,10 +1952,10 @@ PrintBCD:   pha             ; Save the BCD value
 ;
 ; DATA - DATA - DATA - DATA - DATA - DATA - DATA - DATA - DATA - DATA - DATA
 
-BombSpeed:  .res NMBOMBS, $00   ; Array containing the speed of the bombs sent
-BombPosX:   .res NMBOMBS, $00   ; Array with X positions of bombs
-BombPosY:   .res NMBOMBS, $00   ; Array with Y positions of bombs
-BombPosOY:  .res NMBOMBS, $00   ; Array with old Y positions of bombs
+;BombSpeed:  .res NMBOMBS, $00   ; Array containing the speed of the bombs sent
+;BombPosX:   .res NMBOMBS, $00   ; Array with X positions of bombs
+;BombPosY:   .res NMBOMBS, $00   ; Array with Y positions of bombs
+;BombPosOY:  .res NMBOMBS, $00   ; Array with old Y positions of bombs
 
 FireSpeed:  .res NMSHOTS, $00   ; Array containing the speed of the bullet sent
 FirePosX:   .res NMSHOTS, $00   ; Array with X positions of bullet
@@ -2186,7 +2195,7 @@ DefChars:
             BLENDCH = LASTCH+9
             ;Level 0 1 2 3 4 5 6 7 8 9 A B
 LevelsPer:  .byte  5,4,3,3,2,2,2,2,1,1,1,1
-LevelsBomb: .byte  3,2,3,2,2,3,2,1,4,3,2,1
+;LevelsBomb: .byte  3,2,3,2,2,3,2,1,4,3,2,1
 
 NUMLEVEL   = 12 ; Total number of levels.
 
