@@ -43,6 +43,7 @@
         NMBOMBS = 8         ; Maximum number of bombs falling at the same time
         NMSHOTS = 2         ; Maximum number of cannon shots at the same time
         MAXMOTHERS = 10     ; Maximum number of mother ships in a level
+        GEARSTART = 8
 
 ; General-use addresses
         GRCHARS1 = $1C00    ; Address of user-defined characters. Since in the
@@ -165,6 +166,10 @@
         mothercntr= $63
         aliencntr = $64
         OldCannonY= $65
+        GearPos   = $66
+        GearHeld  = $67
+        GearPosY  = $68
+
 
         INITVALC=$ede4
 
@@ -252,9 +257,11 @@ right:      inc CannonPos
             inc CannonYPos
             cmp #8
             bcc @continue
-            lda #8
+            lda #7
             sta CannonPos
-            lda CannonYPos
+            ldy #19
+            sty CannonYPos
+;            sta CannonYPos
             sta OldCannonY
 @continue:  jmp mainloop
 
@@ -269,7 +276,7 @@ left:       dec CannonPos
             jmp mainloop
 
 fire:       lda Win         ; If the game has stopped, restart
-            bne restart
+            ;bne restart
             ldx #0          ; Search for the first free shot
 @search:    lda FireSpeed,X ; (i.e. whose speed = 0)
             beq @found
@@ -381,7 +388,7 @@ CenterScreenNTSC:
             sta CannonYPos
             lda #$36        ; Set a 27 row-high column
             sta VICROWNC
-            lda #25
+            lda #19
             sta BunkerY
             lda #22*8
             sta AlienYLimit
@@ -405,6 +412,7 @@ StartGame:
             sta OldCannonP
             lda #0
             sta CannonPos   ; Initial position of the cannon
+            sta GearHeld
             lda #$00
             sta Direction
             sta mothercntr
@@ -473,51 +481,64 @@ ConfLevel:  ldx Level
 ; 0---4---8---2---
 ;  **  **  **  **
 
-DrawShield: ldx #1
+DrawShield: ldx #8
             ldy BunkerY
             lda Period
+            lda #MAGENTA
             sta Colour
             lda #1
             jsr DrawChar
             inx
+            ldx #15
+            ldy #9
+            lda Period
+            sta Colour
+            lda #3
             jsr DrawChar
-            ldx #5
+            ldx #15
+            ldy #10
+            lda Period
+            sta Colour
+            lda #2
             jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #9
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #13
-            jsr DrawChar
-            inx
-            jsr DrawChar
-            ldx #1
-            dey
-            lda #1
-            jsr DrawChar
-            inx
-            lda #1
-            jsr DrawChar
-            ldx #5
-            lda #1
-            jsr DrawChar
-            inx
-            lda #1
-            jsr DrawChar
-            ldx #9
-            lda #1
-            jsr DrawChar
-            inx
-            lda #1
-            jsr DrawChar
-            ldx #13
-            lda #1
-            jsr DrawChar
-            inx
-            lda #1
-            jmp DrawChar
+;            jsr DrawChar
+;            ldx #5
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #9
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #13
+;            jsr DrawChar
+;            inx
+;            jsr DrawChar
+;            ldx #1
+;            dey
+;            lda #1
+;            jsr DrawChar
+;            inx
+;            lda #1
+;            jsr DrawChar
+;            ldx #5
+;            lda #1
+;            jsr DrawChar
+;            inx
+;            lda #1
+;            jsr DrawChar
+;            ldx #9
+;            lda #1
+;            jsr DrawChar
+;            inx
+;            lda #1
+;            jsr DrawChar
+;            ldx #13
+;            lda #1
+;            jsr DrawChar
+;            inx
+;            lda #1
+;            jmp DrawChar
 
 draw1l:
             lda Score       ; Load the current score and convert it to BCD
@@ -670,10 +691,10 @@ IrqHandler: pha
             ror
             bcs @altaliens
             ldx #TENTACLE1
-            ldy #TENTACLE3
+            ldy #TENTACLE1
             bcc @normal
-@altaliens: ldx #TENTACLE2
-            ldy #TENTACLE4
+@altaliens: ldx #TENTACLE1
+            ldy #TENTACLE1
 @normal:    stx AlienCode1
             sty AlienCode2
             jsr DrawAliens
@@ -695,6 +716,15 @@ IrqHandler: pha
             cmp OldCannonP
             beq @nochange
             jsr ClearCannon ; If yes, redraw it
+            ldx CannonPos
+            cmp #7
+            beq @gearcheck
+            lda GearHeld
+            cmp #1
+            beq @geardraw
+@gearcheck: lda #1
+            sta GearHeld
+@geardraw:  jsr DrawGear
 @nochange:  jsr DrawCannon
             jsr MoveShoots  ; Update the position of cannon shots
             inc IrqCn
@@ -717,18 +747,18 @@ IrqHandler: pha
 
 MotherSh:   lda MotherPos
             cmp #$FD
-            bne @moveship
-            lda Random+1        ; Get a random number and check if it is less
-            cmp #SHIPPROB       ; than a given threshold
-            bcc @exitsh
-            lda mothercntr
-            cmp #MAXMOTHERS
-            beq @exitsh
-            lda #$0F
-            sta MotherPos
-            inc mothercntr
-            lda #0
-            sta MotherCntr
+            ;bne @moveship
+            ;lda Random+1        ; Get a random number and check if it is less
+            ;cmp #SHIPPROB       ; than a given threshold
+            ;bcc @exitsh
+            ;lda mothercntr
+            ;cmp #MAXMOTHERS
+            ;beq @exitsh
+            ;lda #$0F
+            ;sta MotherPos
+            ;inc mothercntr
+            ;lda #0
+            ;sta MotherCntr
             rts
 
 @moveship:  ldx MotherCntr
@@ -754,7 +784,7 @@ MotherSh:   lda MotherPos
             dec MotherPos
             beq @exitsh
             ldx MotherPos   ; Draw the ship
-            lda #TENTACLE2
+            lda #TENTACLE1
             jsr DrawChar
             inx
             lda #MOTHER2
@@ -776,6 +806,22 @@ DrawCannon: lda CannonPos
             sta Colour
             lda #PLAYER         ; Cannon char
             jmp DrawChar
+
+; Draw the gear on the screen, at the position specified in 
+; CannonPos (x), CannonPosY + 1
+
+DrawGear: lda CannonPos
+          sta GearPos
+          inc GearPos
+          stx GearPos
+          tax
+          ldy CannonYPos-1
+          sty GearPosY
+          lda #YELLOW
+          sta Colour
+          lda #GEAR
+          jmp DrawChar
+
 
 ; Clear the cannon on the screen, at the current position, contained in
 ; OldCannonP (in characters).
@@ -921,16 +967,16 @@ DrawAliens:
             sta AliensR
             jsr AlienLoop
 
-            inc AlienCurrY      ; Third line of aliens
-            inc AlienCurrY
+;            inc AlienCurrY      ; Third line of aliens
+;            inc AlienCurrY
 
-            lda #GREEN
-            sta Colour
-            lda #SPRITE1A      ; AlienCode1
-            sta CharCode
-            lda AliensR3s
-            sta AliensR
-            jmp AlienLoop
+;            lda #GREEN
+;            sta Colour
+;            lda #SPRITE1A      ; AlienCode1
+;            sta CharCode
+;            lda AliensR3s
+;            sta AliensR
+;            jmp AlienLoop
 
 ; Wait for the wanted rasterline (NTSC only)
 
@@ -1195,7 +1241,7 @@ collision:  cmp #SPRITE1A
             beq bunkershot
             cmp #1
             beq bunkershot
-            cmp #TENTACLE2
+            cmp #TENTACLE1
             beq mothershot
             cmp #MOTHER2
             beq mothershot
@@ -2035,45 +2081,45 @@ DefChars:
             .byte %00000000
             .byte %00000000
 
-            TENTACLE2 = 1
-            .byte %00000000     ; Alien #2, associated to ch. 1 (normally A)
-            .byte %00000000
-            .byte %10000001
-            .byte %11000111
-            .byte %01100110
-            .byte %00111100
-            .byte %00000000
+            GEARCHEST = 1
+            .byte %00101000     ; Alien #2, associated to ch. 1 (normally A)
+            .byte %01111100
+            .byte %01111100
+            .byte %00101000
+            .byte %11111111
+            .byte %11111111
+            .byte %11111111
+            .byte %11111111
+
+            OCTO = 2
+            .byte %11001111     ; Alien #3, associated to ch. 2 (normally B)
+            .byte %11001111
+            .byte %01100111
+            .byte %00110000
+            .byte %00011000
+            .byte %00001100
+            .byte %00000111
             .byte %00000000
 
-            TENTACLE3 = 2
-            .byte %00000000     ; Alien #3, associated to ch. 2 (normally B)
-            .byte %00000000
-            .byte %11000001
-            .byte %11100011
-            .byte %01101110
-            .byte %00011100
-            .byte %00000000
-            .byte %00100100
-
-            TENTACLE4 = 3
+            OCTO2 = 3
             .byte %00000000     ; Alien #4, associated to ch. 3 (normally C)
-            .byte %00000000
-            .byte %00000011
-            .byte %00111111
-            .byte %01111100
-            .byte %01111100
-            .byte %01111100
-            .byte %11111100
+            .byte %00000111
+            .byte %00001100
+            .byte %00011000
+            .byte %00110000
+            .byte %01100111
+            .byte %11001111
+            .byte %11001111
 
             PLAYER = 4
-            .byte %11001100     ; Mother ship 1
-            .byte %01101100
-            .byte %00111100
-            .byte %00011110
-            .byte %00001100
-            .byte %00010010
-            .byte %00010010
+            .byte %00110011     ; Mother ship 1
             .byte %00110110
+            .byte %00111100
+            .byte %01111000
+            .byte %00110000
+            .byte %01001000
+            .byte %01001000
+            .byte %01101100
 
             HEAD = 5
             .byte %00111100     ; Alien #2, associated to ch. 1 (normally A)
