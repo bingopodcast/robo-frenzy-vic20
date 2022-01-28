@@ -43,7 +43,7 @@
         NMBOMBS = 8         ; Maximum number of bombs falling at the same time
         NMSHOTS = 2         ; Maximum number of cannon shots at the same time
         MAXMOTHERS = 10     ; Maximum number of mother ships in a level
-        GEARSTART = 8
+        
 
 ; General-use addresses
         GRCHARS1 = $1C00    ; Address of user-defined characters. Since in the
@@ -169,6 +169,7 @@
         GearPos   = $66
         GearHeld  = $67
         GearPosY  = $68
+        RobotNum  = $69
 
 
         INITVALC=$ede4
@@ -252,6 +253,10 @@ mainloop:   lda Joystick
             sta VoiceBase
 @continue4: jmp mainloop
 
+fire:       lda Win         ; If the game has stopped, restart
+            bne restart
+            ;ldx #0          ; Search for the first free shot
+
 right:      inc CannonPos
             lda CannonPos
             inc CannonYPos
@@ -261,36 +266,71 @@ right:      inc CannonPos
             sta CannonPos
             ldy #19
             sty CannonYPos
-;            sta CannonYPos
             sta OldCannonY
+            lda CannonPos
+            cmp #7
+            beq @gearcheck
+@gearcheck: lda #1
+            sta GearHeld
+            jmp DrawGear
 @continue:  jmp mainloop
 
 left:       dec CannonPos
             bmi @zeroc
             dec CannonYPos
+            lda CannonPos
+            cmp #0
+            beq @checkpos
             jmp mainloop
+@checkpos:  lda GearHeld
+            cmp #1
+            beq @chkrobo
+@chkrobo:   jmp CheckRobo
+            ;rts
+
 @zeroc:     lda #0
             sta CannonPos
 ;            lda CannonYPos
 ;            sta OldCannonY
             jmp mainloop
 
-fire:       lda Win         ; If the game has stopped, restart
-            ;bne restart
-            ldx #0          ; Search for the first free shot
-@search:    lda FireSpeed,X ; (i.e. whose speed = 0)
-            beq @found
-            inx
-            cpx #NMSHOTS
-            bne @search
-            jmp mainloop    ; No enough shots allowed in parallel. Abort fire.
-@found:     lda CannonPos
-            sta FirePosX,X  ; Put the actual cannon position in the X coord.
-            lda CannonYPos  ; Shoot from the last line
-            sta FirePosY,X
-            lda #1
-            sta FireSpeed,X
-            jmp mainloop
+
+CheckRobo:
+            lda RobotNum
+            cmp #0
+            beq @p1
+            cmp #1
+            beq @p2
+            cmp #2
+            beq @p3
+            cmp #3
+            beq @p4
+            cmp #4
+            beq @p5
+            cmp #5
+            beq @p6
+@p1:        jmp DrawPart1
+            lda #$01            ; Update the score: +10 pts
+            jsr AddScore
+@p2:        jmp DrawPart2
+@p3:        jmp DrawPart3
+@p4:        jmp DrawPart4
+@p5:        jmp DrawPart5
+@p6:        jmp DrawPart6
+
+;@search:    lda FireSpeed,X ; (i.e. whose speed = 0)
+;            beq @found
+;            inx
+;            cpx #NMSHOTS
+;            bne @search
+;            jmp mainloop    ; No enough shots allowed in parallel. Abort fire.
+;@found:     lda CannonPos
+;            sta FirePosX,X  ; Put the actual cannon position in the X coord.
+;            lda CannonYPos  ; Shoot from the last line
+;            sta FirePosY,X
+;            lda #1
+;            sta FireSpeed,X
+;            jmp mainloop
 
 
 
@@ -412,7 +452,9 @@ StartGame:
             sta OldCannonP
             lda #0
             sta CannonPos   ; Initial position of the cannon
+            lda #0
             sta GearHeld
+            sta RobotNum
             lda #$00
             sta Direction
             sta mothercntr
@@ -666,7 +708,7 @@ IrqHandler: pha
             pla
             and #7
             sta SpriteY     ; Calculate Y shift in pixel
-            jsr EraseAliens
+            ;jsr EraseAliens
             jsr MoveTentacles   ; Make bombs fall. Aliens will be on top of bombs
             bit Win         ; If Win <0 stop the game
             bmi @exitirq
@@ -697,7 +739,7 @@ IrqHandler: pha
             ldy #TENTACLE1
 @normal:    stx AlienCode1
             sty AlienCode2
-            jsr DrawAliens
+            ;jsr DrawAliens
             lda AlienMaxX   ; Check if the direction should be reversed
             cmp #15
             bmi @cont2
@@ -709,22 +751,18 @@ IrqHandler: pha
             bcs @cont3      ; Check for the pixel position too
             lda SpriteX
             bne @cont3
-            lda #0
-            sta Direction   ; Invert the direction
-            inc AlienPosY   ; Increment the Y position of the aliens
+            ;lda #0
+            ;sta Direction   ; Invert the direction
+            ;inc AlienPosY   ; Increment the Y position of the aliens
 @cont3:     lda CannonPos   ; Check if the cannon position has changed
             cmp OldCannonP
             beq @nochange
             jsr ClearCannon ; If yes, redraw it
-            ldx CannonPos
-            cmp #7
-            beq @gearcheck
             lda GearHeld
             cmp #1
             beq @geardraw
-@gearcheck: lda #1
-            sta GearHeld
-@geardraw:  jsr DrawGear
+@geardraw:  jsr ClearGear
+            ;jsr DrawGear
 @nochange:  jsr DrawCannon
             jsr MoveShoots  ; Update the position of cannon shots
             inc IrqCn
@@ -808,20 +846,114 @@ DrawCannon: lda CannonPos
             jmp DrawChar
 
 ; Draw the gear on the screen, at the position specified in 
-; CannonPos (x), CannonPosY + 1
+; CannonPos (x + 1), CannonPosY - 1
+; Lower Y = higher, lower X = further left
 
-DrawGear: lda CannonPos
+DrawGear: 
+          lda CannonPos
           sta GearPos
           inc GearPos
-          stx GearPos
-          tax
-          ldy CannonYPos-1
-          sty GearPosY
+          ldx GearPos
+          lda CannonYPos
+          sta GearPosY
+          dec GearPosY
+          ldy GearPosY
           lda #YELLOW
           sta Colour
           lda #GEAR
           jmp DrawChar
 
+; Clear the Gear at last remembered position
+
+ClearGear:
+          ldx GearPos
+          ldy GearPosY
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
+
+DrawPart1:
+          lda RobotNum
+          inc RobotNum
+          sta RobotNum
+          ldx #1
+          ldy #5
+          lda #BLUE
+          sta Colour
+          lda #LLEG
+          jmp DrawChar
+          ;jmp mainloop
+
+DrawPart2:
+          lda RobotNum
+          inc RobotNum
+          sta RobotNum
+          lda #$01            ; Update the score: +10 pts
+          jsr AddScore
+          lda #BLUE
+          sta Colour
+          lda #RLEG
+          ldx #3
+          ldy #5
+          jmp DrawChar
+          jmp mainloop
+
+DrawPart3:
+          lda RobotNum
+          inc RobotNum
+          sta RobotNum
+          lda #$01            ; Update the score: +10 pts
+          jsr AddScore
+          lda #BLUE
+          sta Colour
+          lda #LARM
+          ldx #1
+          ldy #4
+          jmp DrawChar
+          jmp mainloop
+
+DrawPart4:
+          lda RobotNum
+          inc RobotNum
+          sta RobotNum
+          lda #$01            ; Update the score: +10 pts
+          jsr AddScore
+          lda #BLUE
+          sta Colour
+          lda #TORSO
+          ldx #2
+          ldy #4
+          jmp DrawChar
+          jmp mainloop
+
+DrawPart5:
+          lda RobotNum
+          inc RobotNum
+          sta RobotNum
+          lda #$01            ; Update the score: +10 pts
+          jsr AddScore
+          lda #BLUE
+          sta Colour
+          lda #RARM
+          ldx #3
+          ldy #4
+          jmp DrawChar
+          jmp mainloop
+
+DrawPart6:
+          lda RobotNum
+          inc RobotNum
+          sta RobotNum
+          lda #$02            ; Update the score: +10 pts
+          jsr AddScore
+          lda #BLUE
+          sta Colour
+          lda #HEAD
+          ldx #2
+          ldy #3
+          jmp DrawChar
+          jmp mainloop
 
 ; Clear the cannon on the screen, at the current position, contained in
 ; OldCannonP (in characters).
@@ -836,81 +968,81 @@ ClearCannon:
 
 ; Erase aliens. Calculate AlienCurrY (in chars)
 
-EraseAliens:
-            ldy AlienPosYc
-            dey
-
-            lda #<MEMSCR    ; Inlined version of CharPos without colour
-            sta POSCHARPT
-            lda #>MEMSCR
-            sta POSCHARPT+1
-            tya
-            asl             ; 16 columns per line. Multiply!
-            asl
-            asl
-            asl             ; If it shifts an 1 in the carry, this means that
-            bcc @nocorr     ; we need to write in the bottom-half of the screen
-            inc POSCHARPT+1
-            clc
-@nocorr:    adc POSCHARPT
-            sta POSCHARPT
-            lda INITVALC
-            cmp #$05
-            bne @skipwait   ; Achieving flicker-less alien representation in
-            jsr Waitrast    ; NTSC is more difficult, we need to wait in some
-@skipwait:  ldy #16*7       ; situations.
-            lda #EMPTY
-@loop:      sta (POSCHARPT),y   ; A little bit of loop unrolling
-            dey
-            sta (POSCHARPT),y
-            dey
-            sta (POSCHARPT),y
-            dey
-            sta (POSCHARPT),y
-            dey
-            sta (POSCHARPT),y
-            dey
-            sta (POSCHARPT),y
-            dey
-            sta (POSCHARPT),y
-            dey
-            sta (POSCHARPT),y
-            dey
-            bne @loop
-            sta (POSCHARPT),y
-            rts
+;EraseAliens:
+;            ldy AlienPosYc
+;            dey
+;
+;            lda #<MEMSCR    ; Inlined version of CharPos without colour
+;            sta POSCHARPT
+;            lda #>MEMSCR
+;            sta POSCHARPT+1
+;            tya
+;            asl             ; 16 columns per line. Multiply!
+;            asl
+;            asl
+;            asl             ; If it shifts an 1 in the carry, this means that
+;            bcc @nocorr     ; we need to write in the bottom-half of the screen
+;            inc POSCHARPT+1
+;            clc
+;@nocorr:    adc POSCHARPT
+;            sta POSCHARPT
+;            lda INITVALC
+;            cmp #$05
+;            bne @skipwait   ; Achieving flicker-less alien representation in
+;            jsr Waitrast    ; NTSC is more difficult, we need to wait in some
+;@skipwait:  ldy #16*7       ; situations.
+;            lda #EMPTY
+;@loop:      sta (POSCHARPT),y   ; A little bit of loop unrolling
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            sta (POSCHARPT),y
+;            dey
+;            bne @loop
+;            sta (POSCHARPT),y
+;            rts
 
 ; Calculate SpriteX and PixPos from AlienPosX. It is a little tricky, as
 ; AlienPosX can be negative and some corrections have to be done.
 
-CalcXpos:   lda AlienPosX       ; Calculate the position in characters
-            bpl @positive
-            eor #$FF            ; Calculate the two complement
-            clc
-            adc #1
-            pha
-            and #7
-            sta SpriteX
-            pla
-@positive:  lsr                 ; Divide by 8
-            lsr
-            lsr
-            sta PixPosX         ; Store it in PixPosX
-            lda AlienPosX       ; Calculate the position in characters
-            bpl @positive1
-            lda #$FF
-            sec
-            sbc PixPosX
-            sta PixPosX
-            lda #7
-            sec
-            sbc SpriteX
-            sta SpriteX
-            rts
-@positive1: and #7
-            sta SpriteX
-            rts
-
+;CalcXpos:   lda AlienPosX       ; Calculate the position in characters
+;            bpl @positive
+;            eor #$FF            ; Calculate the two complement
+;            clc
+;            adc #1
+;            pha
+;            and #7
+;            sta SpriteX
+;            pla
+;@positive:  lsr                 ; Divide by 8
+;            lsr
+;            lsr
+;            sta PixPosX         ; Store it in PixPosX
+;            lda AlienPosX       ; Calculate the position in characters
+;            bpl @positive1
+;            lda #$FF
+;            sec
+;            sbc PixPosX
+;            sta PixPosX
+;            lda #7
+;            sec
+;            sbc SpriteX
+;            sta SpriteX
+;            rts
+;@positive1: and #7
+;            sta SpriteX
+;            rts
+;
 ; Draw aliens on the screen. They are several lines with at most 8 aliens
 ; each. The presence of an alien in the first row is given by bits in the
 ; AliensR1 byte. An alien is present at the beginning of the game (or level)
@@ -919,53 +1051,53 @@ CalcXpos:   lda AlienPosX       ; Calculate the position in characters
 ; The vertical position of the aliens should be in AliensPosY (in pixels) and
 ; AlienCurrY (in chars) should have been already calculated.
 
-DrawAliens:
-            lda AlienPosYc
-            sta AlienCurrY
-            jsr CalcXpos
-
-            ; Create the first sprite
-
-            lda #<(GRCHARS1+SPRITE1A*8)
-            sta SPRITECH
-            lda #>(GRCHARS1+SPRITE1A*8)
-            sta SPRITECH+1
-            jsr ClearSprite
-            lda AlienCode1
-            sta CharCode
-            jsr LoadSprite
-
-            lda #<(GRCHARS1+SPRITE2A*8)
-            sta SPRITECH
-            lda #>(GRCHARS1+SPRITE2A*8)
-            sta SPRITECH+1
-            jsr ClearSprite
-            lda AlienCode2
-            sta CharCode
-            jsr LoadSprite
-
-            lda #$ff            ; Reset the min/max positions of aliens in ch.
-            sta AlienMinX
-            lda #$00
-            sta AlienMaxX
-
-            lda AliensR1s       ; Top line of aliens
-            sta AliensR
-            lda #SPRITE1A      ; AlienCode1
-            sta CharCode
-            lda #RED
-            sta Colour
-            jsr AlienLoop
-
-            inc AlienCurrY      ; Second line of aliens
-            inc AlienCurrY
-            lda #SPRITE2A      ; AlienCode1
-            sta CharCode
-            lda #CYAN
-            sta Colour
-            lda AliensR2s
-            sta AliensR
-            jsr AlienLoop
+;DrawAliens:
+;            lda AlienPosYc
+;            sta AlienCurrY
+;            jsr CalcXpos
+;
+;            ; Create the first sprite
+;
+;            lda #<(GRCHARS1+SPRITE1A*8)
+;            sta SPRITECH
+;            lda #>(GRCHARS1+SPRITE1A*8)
+;            sta SPRITECH+1
+;            jsr ClearSprite
+;            lda AlienCode1
+;            sta CharCode
+;            jsr LoadSprite
+;
+;            lda #<(GRCHARS1+SPRITE2A*8)
+;            sta SPRITECH
+;            lda #>(GRCHARS1+SPRITE2A*8)
+;            sta SPRITECH+1
+;            jsr ClearSprite
+;            lda AlienCode2
+;            sta CharCode
+;            jsr LoadSprite
+;
+;            lda #$ff            ; Reset the min/max positions of aliens in ch.
+;            sta AlienMinX
+;            lda #$00
+;            sta AlienMaxX
+;
+;            lda AliensR1s       ; Top line of aliens
+;            sta AliensR
+;            lda #SPRITE1A      ; AlienCode1
+;            sta CharCode
+;            lda #RED
+;            sta Colour
+;            jsr AlienLoop
+;
+;            inc AlienCurrY      ; Second line of aliens
+;            inc AlienCurrY
+;            lda #SPRITE2A      ; AlienCode1
+;            sta CharCode
+;            lda #CYAN
+;            sta Colour
+;            lda AliensR2s
+;            sta AliensR
+;            jsr AlienLoop
 
 ;            inc AlienCurrY      ; Third line of aliens
 ;            inc AlienCurrY
@@ -1091,7 +1223,7 @@ loop4:      stx tmpindex
             lda FireChOver,X    ; Erase the previous shot
             cmp #$FF            ; In some situations, all the aliens have to
             bne @normalc        ; be redrawn to avoid a glitch...
-            jsr DrawAliens      ; this is not very elegant!
+            ;jsr DrawAliens      ; this is not very elegant!
             jmp @noerase
 @normalc:   ldx tmpx            ; Load the X position
             jsr DrawChar        ; Erase the shot in the old position
