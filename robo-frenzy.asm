@@ -167,9 +167,9 @@
         aliencntr = $64
         OldCannonY= $65
         GearPos   = $66
-        GearHeld  = $67
         GearPosY  = $68
         RobotNum  = $69
+        GearHeld  = $6A
 
 
         INITVALC=$ede4
@@ -257,10 +257,12 @@ fire:       lda Win         ; If the game has stopped, restart
             bne restart
             ;ldx #0          ; Search for the first free shot
 
-right:      inc CannonPos
+right:      
             lda CannonPos
+            inc CannonPos
+            ;sta CannonPos
             inc CannonYPos
-            cmp #8
+            cmp #7
             bcc @continue
             lda #7
             sta CannonPos
@@ -270,10 +272,10 @@ right:      inc CannonPos
             lda CannonPos
             cmp #7
             beq @gearcheck
+@continue:  jmp mainloop
 @gearcheck: lda #1
             sta GearHeld
             jmp DrawGear
-@continue:  jmp mainloop
 
 left:       dec CannonPos
             bmi @zeroc
@@ -283,7 +285,7 @@ left:       dec CannonPos
             beq @checkpos
             jmp mainloop
 @checkpos:  lda GearHeld
-            cmp #1
+            cmp #0
             beq @chkrobo
 @chkrobo:   jmp CheckRobo
             ;rts
@@ -296,6 +298,11 @@ left:       dec CannonPos
 
 
 CheckRobo:
+            lda GearHeld
+            cmp #1
+            beq @draw
+            jmp mainloop
+@draw:
             lda RobotNum
             cmp #0
             beq @p1
@@ -883,7 +890,6 @@ DrawPart1:
           sta Colour
           lda #LLEG
           jmp DrawChar
-          ;jmp mainloop
 
 DrawPart2:
           lda RobotNum
@@ -897,7 +903,6 @@ DrawPart2:
           ldx #3
           ldy #5
           jmp DrawChar
-          jmp mainloop
 
 DrawPart3:
           lda RobotNum
@@ -911,7 +916,6 @@ DrawPart3:
           ldx #1
           ldy #4
           jmp DrawChar
-          jmp mainloop
 
 DrawPart4:
           lda RobotNum
@@ -925,7 +929,6 @@ DrawPart4:
           ldx #2
           ldy #4
           jmp DrawChar
-          jmp mainloop
 
 DrawPart5:
           lda RobotNum
@@ -939,7 +942,6 @@ DrawPart5:
           ldx #3
           ldy #4
           jmp DrawChar
-          jmp mainloop
 
 DrawPart6:
           lda RobotNum
@@ -953,7 +955,49 @@ DrawPart6:
           ldx #2
           ldy #3
           jmp DrawChar
-          jmp mainloop
+
+ClearRobo:
+          ldx #2
+          ldy #3
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
+
+          ldx #3
+          ldy #4
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
+
+          ldx #2
+          ldy #4
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
+
+          ldx #1
+          ldy #4
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
+          
+          ldx #3
+          ldy #5
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
+          
+          ldx #1
+          ldy #5
+          lda #WHITE
+          sta Colour
+          lda #EMPTY
+          jmp DrawChar
 
 ; Clear the cannon on the screen, at the current position, contained in
 ; OldCannonP (in characters).
