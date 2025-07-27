@@ -75,7 +75,7 @@
     ScorePrintX         = $44 ; Starting X position for the string
     ScorePrintY         = $45 ; Y position for the string
     InitialMuteTimer = $4D
-    MusicMuted = $4E    i	  ; Flag to mute music
+    MusicMuted = $4E   	      ; Flag to mute music
     IrqSyncFlag = $4F
     
     RobotAnimState      = $50 ; What is the robot animation doing?
