@@ -10,10 +10,10 @@
 ; The assembler used is ca65. 
 
 .segment "HEADER"
-    .addr _main                 ; 2 bytes: Cold Start vector for SYS command
-    .addr _main                 ; 2 bytes: Warm Start vector
-    .byte $43, $42, $4D, $38, $30 ; 5 bytes: "CBM80" autostart signature
-	
+    .addr _main                   ; 2 bytes: Cold Start vector for SYS command
+    .addr GameStart               ; 2 bytes: Warm Start vector
+	.byte $30, $41, $C3, $C2, $CD ; A0CBM Signature
+    
 ; Plenty of things are done during the IRQ handling routine, synchronized with
 ; the PAL refresh rate of the monitor. For this reason, there may be some flicker
 ; of the tentacles when this game is played on a NTSC machine. Differences between
@@ -28,10 +28,7 @@
     GRCHARS1 = $1C00    ; Address of user-defined characters. Since in the
                         ; unexpanded VIC the screen matrix starts at
                         ; $1E00, there are 512 bytes free, i.e. 64 chars
-                        ; that can be defined. That leaves 3059 bytes free
-                        ; for the machine language code (counting the
-                        ; 752 SYS4109 stub in BASIC that launches the
-                        ; program.
+                        ; that can be defined.
 
 ; Colour constants for the VIC 20
     BLACK    = $00
@@ -113,12 +110,12 @@
     Level        = $47     ; Current level
     CannonYPos   = $4B
     BunkerY      = $4D
-    MusicMuted   = $4E    ; Flag to mute music
-    Voice1Ptr    = $4F    ; Music data pointer for voice 1
-    Voice1Ctr    = $50    ; Note duration counter for voice 1
-    Voice2Ptr    = $55    ; Music data pointer for voice 2
-    Voice2Ctr    = $56    ; Note duration counter for voice 2
-    GameOverSfxCtr = $57  ; Counter for the game over sound
+    MusicMuted   = $4E     ; Flag to mute music
+    Voice1Ptr    = $4F     ; Music data pointer for voice 1
+    Voice1Ctr    = $50     ; Note duration counter for voice 1
+    Voice2Ptr    = $55     ; Music data pointer for voice 2
+    Voice2Ctr    = $56     ; Note duration counter for voice 2
+    GameOverSfxCtr = $57   ; Counter for the game over sound
     SfxTimer 	 = $58
     AccentColour = $5A
 
@@ -151,8 +148,8 @@
     DT_LOOP_COUNTER   		  = $F1 ; DrawTentacles requires this to ensure proper animation.
     PlayerCharToDraw  		  = $F2 ; Flashing player character to draw.
         
-    SecondsLeft       		  = $F3     ; Countdown timer
-    FrameCounter      		  = $F4     ; Counts IRQs from 50 down to 0 to track seconds
+    SecondsLeft       		  = $F3 ; Countdown timer
+    FrameCounter      		  = $F4 ; Counts IRQs from 50 down to 0 to track seconds
     BottomRow         		  = $F5
 
     INITVALC=$ede4
@@ -171,9 +168,9 @@
     VOLUME   = $900E    ; Volume and additional colour info
     VICCOLOR = $900F    ; Screen and border colours
 
-    PORTAVIA1  = $9111   ; Port A 6522 (joystick)
+    PORTAVIA1  = $9111  ; Port A 6522 (joystick)
     PORTAVIA1d = $9113  ; Port A 6522 (joystick)
-    PORTBVIA2  = $9120   ; Port B 6522 2 value (joystick)
+    PORTBVIA2  = $9120  ; Port B 6522 2 value (joystick)
     PORTBVIA2d = $9122  ; Port B 6522 2 direction (joystick
 
     MEMSCR = $1E00    ; Start address of the screen memory (unexp. VIC)
@@ -187,11 +184,7 @@
 
     TENTACLE_STATE_RETRACTED = 0 ; Inactive and fully retracted
     TENTACLE_SEGMENT_CHAR    = 0
-    NUM_TENTACLES          = 10
-
-	NUM_TENTACLE_PATHS = 9
-	
-	NUMLEVEL   = 12 ; Total number of levels.
+    NUM_TENTACLES            = 10
 
 .export _main
 .segment "STARTUP"
@@ -200,10 +193,30 @@
 .segment "GRCHARS"
 .segment "CODE"
 
-; Main program routines.
-_main:       
-    jsr Init        ; Init the game (load graphic chars, etc...)
+; This was a clever idea that didn't work, but it made for a memorable 
+; memory address to start the game.  SYS 40999.
+_main:
+    ldx #0
 
+loop:
+    lda command_string,x
+    beq done_copy
+    sta $0277,x         ; Manually poke character into the keyboard buffer, rpt.
+    inx
+    jmp loop
+
+done_copy:
+    stx $C6             ; Set the number of characters in the buffer    
+    jmp $E3BF           ; Jump to the KERNAL's warm start vector to run the command
+
+command_string:
+    .byte "SYS 40999", $0D, 0
+
+; Main program routines.
+GameStart:
+    jsr Init        ; The Init routine for the game itself
+    jsr StartGame   ; The StartGame routine
+	
 restart:    
     jsr StartGame   ; Set the starting values of game variables
 
@@ -250,12 +263,8 @@ mainloop:
     lda keyin
     cmp #$58        ; X: increase position of the player (aka Cannon - right)
     beq @call_right_key
-	cmp #$1D        ; CURSOR RIGHT key
-	beq @call_right_key
     cmp #$5A        ; Z: decrease position of the player (aka Cannon - left)
     beq @call_left_key
-	cmp #$9D
-	beq @call_left_key
     cmp #$4D        ; M toggle music on/off
     bne mainloop
     lda MusicMuted
@@ -1942,14 +1951,17 @@ Irq_HandleGameOver:
     rts
 
 .segment "BSS_VARS"
-	Tentacle_Length:      .res NUM_TENTACLES
-	Tentacle_PathIndex:   .res NUM_TENTACLES
-	Tentacle_State:       .res NUM_TENTACLES
-	Tentacle_Old_Length:  .res NUM_TENTACLES
-	ProcessingGearAward:  .res 1
-	TempOldY:             .res 1
-	TempLoopY:            .res 1
+    ; Tentacle Data
+    Tentacle_Length:      .res 10
+    Tentacle_PathIndex:   .res 10
+    Tentacle_State:       .res 10
+    Tentacle_Old_Length:  .res 10
 
+    ; Temporary variables
+    ProcessingGearAward:  .res 1
+    TempOldY:             .res 1
+    TempLoopY:            .res 1
+	
 .segment "CODE"
 
 ; Data and configuration settings. Tables and custom characters.
@@ -2144,7 +2156,7 @@ DefChars:
     .byte %00011100
     .byte %00001111
             
-LevelsPer: .byte  5,4,3,3,2,2,2,2,1,1,1,1
+LevelsPer: .byte  8,6,4,4,3,3,2,2,1,1,1,1
 
 CurrentStr: .byte 19, 3, 15, 18, 5, 0 ; "SCORE"
 
@@ -2252,6 +2264,8 @@ TentaclePathData:
     .byte 93,  4, 1  ; Path 8 (Tentacle 7, part 2)
     .byte 105, 4, 1  ; Path 9 (Tentacle 8)
 
+NUM_TENTACLE_PATHS = 9
+
 RobotPartScores:
     .byte 10  ; LLEG score (displays as 100)
     .byte 10  ; RLEG score (displays as 100)
@@ -2268,6 +2282,8 @@ RobotPartData:
     .byte $02, $08, RARM
     .byte $00, $08, LARM
     .byte $01, $07, HEAD
+
+NUMLEVEL   = 12 ; Total number of levels.
 
 EndMemAddress = EndMemMrk
 
